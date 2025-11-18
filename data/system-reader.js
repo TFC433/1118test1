@@ -27,41 +27,40 @@ class SystemReader extends BaseReader {
         try {
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.config.SPREADSHEET_ID,
-                // 【*** 修改：擴大讀取範圍到 H 欄 ***】
-                range: `${this.config.SHEETS.SYSTEM_CONFIG}!A:H`,
+                // 【修改】擴大讀取範圍到 I 欄 (第9欄) 用來讀取分類
+                range: `${this.config.SHEETS.SYSTEM_CONFIG}!A:I`,
             });
             
             const rows = response.data.values || [];
             if (rows.length <= 1) return {};
             
             const settings = {};
-            // 在系統設定工作表中新增一個名為「事件類型」的設定
+            // 初始化事件類型 (硬編碼部分)
             if (!settings['事件類型']) {
-                settings['事件類型'] = [];
+                settings['事件類型'] = [
+                    { value: 'general', note: '一般', order: 1, color: '#6c757d' },
+                    { value: 'iot', note: 'IOT', order: 2, color: '#007bff' },
+                    { value: 'dt', note: 'DT', order: 3, color: '#28a745' },
+                    { value: 'dx', note: 'DX', order: 4, color: '#ffc107' },
+                    { value: 'legacy', note: '舊事件', order: 5, color: '#dc3545' }
+                ];
             }
-            settings['事件類型'].push(
-                { value: 'general', note: '一般', order: 1, color: '#6c757d' }, // 灰色
-                { value: 'iot', note: 'IOT', order: 2, color: '#007bff' }, // 藍色
-                { value: 'dt', note: 'DT', order: 3, color: '#28a745' }, // 綠色
-                { value: 'dx', note: 'DX', order: 4, color: '#ffc107' }, // 黃色
-                { value: 'legacy', note: '舊事件', order: 5, color: '#dc3545' } // 紅色
-            );
             
             rows.slice(1).forEach(row => {
-                // 【*** 修改：解構賦值增加 value2, value3 ***】
-                const [type, item, order, enabled, note, color, value2, value3] = row;
+                // 【修改】解構賦值增加 category (I欄)
+                const [type, item, order, enabled, note, color, value2, value3, category] = row;
                 
                 if (enabled === 'TRUE' && type && item) {
                     if (!settings[type]) settings[type] = [];
                     
-                    // 【*** 修改：將 value2, value3 加入到設定物件中 ***】
                     settings[type].push({
                         value: item,
                         note: note || item,
                         order: parseInt(order) || 99,
                         color: color || null,
                         value2: value2 || null, // G欄: 規格單價
-                        value3: value3 || null  // H欄: 行為模式 (e.g., 'allow_quantity')
+                        value3: value3 || null, // H欄: 行為模式
+                        category: category || '其他' // 【新增】I欄 分類，預設為 '其他'
                     });
                 }
             });
