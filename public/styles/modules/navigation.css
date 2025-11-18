@@ -1,0 +1,245 @@
+/* ==================== modules/navigation.css ==================== */
+/* 側邊欄 - 第4個模組 */
+
+/* 側邊欄 */
+.sidebar {
+    width: 280px;
+    background: var(--secondary-bg);
+    border-right: 1px solid var(--border-color);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: fixed;
+    height: 100vh;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: var(--spacing-6);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    font-weight: 700;
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+}
+
+.logo-icon {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    border-radius: var(--rounded-lg);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.logo-icon svg { 
+    width: 20px; 
+    height: 20px; 
+    color: white; 
+}
+
+.sidebar-nav { 
+    flex: 1; 
+    padding: var(--spacing-6) 0; 
+    overflow-y: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.sidebar-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-list { 
+    list-style: none; 
+    padding: 0 var(--spacing-4); 
+}
+
+.nav-item { 
+    margin-bottom: var(--spacing-1); 
+}
+
+.nav-link {
+    display: flex; 
+    align-items: center; 
+    gap: var(--spacing-3);
+    padding: var(--spacing-4); 
+    border-radius: var(--rounded-lg);
+    text-decoration: none; 
+    color: var(--text-secondary);
+    transition: all 0.2s ease; 
+    position: relative; 
+    font-weight: 500;
+    height: 56px;
+}
+
+.nav-link:hover { 
+    background: var(--glass-bg); 
+    color: var(--text-primary); 
+    transform: translateX(4px); 
+}
+
+.nav-item.active .nav-link { 
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); 
+    color: white; 
+    box-shadow: var(--shadow-md); 
+    font-weight: 600; 
+}
+
+/* 【根本原因修正】直接為 svg.nav-icon 設定樣式 */
+svg.nav-icon { 
+    min-width: 20px; /* 確保不被過度壓縮 */
+    width: 20px; 
+    height: 20px; 
+    transition: all 0.2s ease;
+    color: var(--text-secondary); /* 預設顏色 */
+}
+.nav-item.active .nav-link svg.nav-icon {
+    color: white; /* 啟用時的圖示顏色 */
+}
+
+
+/* 側邊欄釘選與收合狀態樣式 */
+.sidebar-footer {
+    padding: var(--spacing-4);
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+}
+
+#sidebar-pin-toggle {
+    width: 100%;
+    background: transparent;
+    border: none;
+    height: 56px;
+}
+
+#sidebar-pin-toggle .nav-icon svg {
+    width: 24px;
+    height: 24px;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+}
+
+#sidebar-pin-toggle:hover {
+    background: var(--glass-bg);
+    color: var(--text-primary);
+}
+#sidebar-pin-toggle:hover .nav-icon svg {
+    color: var(--text-primary);
+}
+
+
+/* --- 收合狀態下的核心樣式 --- */
+.app-layout.sidebar-collapsed .sidebar {
+    width: 80px;
+}
+
+.app-layout.sidebar-collapsed .sidebar-header {
+    padding-left: 0;
+    padding-right: 0;
+    justify-content: center;
+}
+.app-layout.sidebar-collapsed #sidebar-pin-toggle {
+    justify-content: center;
+}
+
+
+.app-layout.sidebar-collapsed .sidebar .nav-text,
+.app-layout.sidebar-collapsed .sidebar .logo-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity 0.1s ease, width 0.2s ease;
+}
+
+.app-layout.sidebar-collapsed .sidebar .logo {
+    justify-content: center;
+}
+
+/* ========== 【最終對齊修正 - 正確結構版】 ========== */
+/* 1. 在收合時，重置連結本身的樣式 */
+.app-layout.sidebar-collapsed .nav-link {
+    padding: 0;
+    justify-content: center;
+}
+.app-layout.sidebar-collapsed .nav-item.active .nav-link {
+    background: transparent;
+    box-shadow: none;
+}
+.app-layout.sidebar-collapsed .nav-link:hover {
+    background: transparent; /* 取消懸浮背景 */
+    transform: none;
+}
+
+/* 2. 將 svg.nav-icon 作為容器，設定固定尺寸與 padding */
+.app-layout.sidebar-collapsed svg.nav-icon {
+    width: 40px;
+    height: 40px;
+    padding: 10px; /* 內部留白，讓圖示看起來變小 */
+    border-radius: var(--rounded-lg);
+    flex-shrink: 0;
+}
+
+/* 3. 將啟用狀態的背景色，應用在 svg.nav-icon 上 */
+.app-layout.sidebar-collapsed .nav-item.active svg.nav-icon {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: white;
+    padding: 10px; /* 增加 padding，讓圖示變得更小 (12px 視覺大小) */
+}
+
+/* 4. 為非啟用圖示也增加一個懸浮背景 */
+.app-layout.sidebar-collapsed .nav-link:hover svg.nav-icon {
+    background: var(--glass-bg);
+}
+/* ========== 最終修正結束 ========== */
+s
+
+/* 主題切換按鈕 */
+.theme-toggle {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--rounded-lg);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(20px);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.05);
+    background: var(--glass-bg);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.theme-toggle .sun-icon { display: none; }
+.theme-toggle .moon-icon { display: block; }
+[data-theme="light"] .theme-toggle .sun-icon { display: block; }
+[data-theme="light"] .theme-toggle .moon-icon { display: none; }
+
+/* 手機版隱藏釘選按鈕 */
+@media (max-width: 768px) {
+    .sidebar-footer {
+        display: none;
+    }
+}

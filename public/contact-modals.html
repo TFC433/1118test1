@@ -1,0 +1,135 @@
+<div id="upgrade-contact-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">📈 升級潛在客戶</h2>
+            <button class="close-btn" onclick="closeModal('upgrade-contact-modal')">&times;</button>
+        </div>
+        <div id="upgrade-contact-content">
+            <div class="form-group">
+                <label class="form-label">搜尋聯絡人</label>
+                <input type="text" class="search-box" id="upgrade-search" placeholder="輸入姓名或公司名稱..." onkeyup="searchContactsForUpgrade()">
+            </div>
+            <div class="pagination" id="upgrade-contacts-pagination" style="justify-content: center; margin-bottom: 15px;"></div>
+
+            <div id="upgrade-contacts-list">
+                <div class="loading show">
+                    <div class="spinner"></div>
+                    <p>載入聯絡人資料中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="upgrade-confirm-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">📈 確認升級聯絡人</h2>
+            <button class="close-btn" onclick="closeModal('upgrade-confirm-modal')">&times;</button>
+        </div>
+        <div id="selected-contact-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            </div>
+        <form id="upgrade-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">機會名稱 *</label>
+                    <input type="text" class="form-input" id="upgrade-opportunity-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">機會種類</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="upgrade-opportunity-type">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">公司所在縣市</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="upgrade-company-county">
+                            <option value="">請選擇縣市...</option>
+                            <option value="臺北市">臺北市</option>
+                            <option value="新北市">新北市</option>
+                            <option value="桃園市">桃園市</option>
+                            <option value="臺中市">臺中市</option>
+                            <option value="臺南市">臺南市</option>
+                            <option value="高雄市">高雄市</option>
+                            <option value="基隆市">基隆市</option>
+                            <option value="新竹市">新竹市</option>
+                            <option value="嘉義市">嘉義市</option>
+                            <option value="新竹縣">新竹縣</option>
+                            <option value="苗栗縣">苗栗縣</option>
+                            <option value="彰化縣">彰化縣</option>
+                            <option value="南投縣">南投縣</option>
+                            <option value="雲林縣">雲林縣</option>
+                            <option value="嘉義縣">嘉義縣</option>
+                            <option value="屏東縣">屏東縣</option>
+                            <option value="宜蘭縣">宜蘭縣</option>
+                            <option value="花蓮縣">花蓮縣</option>
+                            <option value="臺東縣">臺東縣</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">目前階段</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="upgrade-current-stage">
+                            <option value="01_初步接觸">初步接觸</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                 <div class="form-group">
+                    <label class="form-label">負責業務</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="upgrade-assignee">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">預計結案日</label>
+                    <input type="date" class="form-input" id="upgrade-expected-close-date">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">機會價值</label>
+                    <input type="text" class="form-input" id="upgrade-opportunity-value" placeholder="如: 1,000,000">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">備註</label>
+                <textarea class="form-textarea" id="upgrade-notes" placeholder="輸入升級原因或相關備註..."></textarea>
+            </div>
+            
+            <button type="submit" class="submit-btn">📈 確認升級為機會</button>
+        </form>
+    </div>
+</div>
+
+<div id="interactions-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">📋 互動紀錄</h2>
+            <button class="close-btn" onclick="closeModal('interactions-modal')">&times;</button>
+        </div>
+        <div class="search-pagination">
+            <input type="text" class="search-box" id="interactions-search" placeholder="搜尋互動紀錄..." onkeyup="searchInteractions()">
+            <div class="pagination" id="interactions-pagination"></div>
+        </div>
+        <div id="interactions-content">
+            <div class="loading show">
+                <div class="spinner"></div>
+                <p>載入互動紀錄中...</p>
+            </div>
+        </div>
+    </div>
+</div>

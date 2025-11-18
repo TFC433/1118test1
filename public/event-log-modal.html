@@ -1,0 +1,236 @@
+<style>
+    /* ==================== 全新事件紀錄 Modal V4 (精緻化雙欄佈局) 樣式 ==================== */
+
+    #event-log-modal .modal-content {
+        max-width: 1400px;
+    }
+    
+    /* 【最終修正】將按鈕群組化，並確保其在同一行 */
+    #event-log-modal .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #event-log-modal .modal-header .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-3);
+    }
+    #event-log-modal .modal-header .action-buttons .action-btn,
+    #event-log-modal .modal-header .action-buttons .close-btn {
+        padding: var(--spacing-2) var(--spacing-4);
+        font-size: var(--font-size-sm);
+        height: auto;
+        margin-bottom: 0; /* 覆蓋可能存在的 margin */
+    }
+     #event-log-modal .modal-header .action-buttons .close-btn {
+        width: auto;
+     }
+
+    .form-step-group {
+        background-color: var(--primary-bg);
+        padding: var(--spacing-6);
+        border-radius: var(--rounded-xl);
+        border: 1px solid var(--border-color);
+        margin-bottom: var(--spacing-6);
+    }
+    
+    .form-step-group .form-step-label {
+        font-size: var(--font-size-lg);
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-5);
+        display: flex;
+        align-items: center;
+    }
+    
+    .form-step-label .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        color: white;
+        font-size: 1rem;
+        margin-right: var(--spacing-3);
+    }
+
+    .segmented-control {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    .segmented-control label {
+        flex-grow: 1;
+        text-align: center;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-radius: var(--rounded-lg);
+        cursor: pointer;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .segmented-control label:hover {
+        background-color: var(--glass-bg);
+    }
+
+    .segmented-control input[type="radio"] {
+        display: none;
+    }
+
+    .segmented-control input[type="radio"]:checked + label {
+        background-color: var(--accent-blue);
+        color: white;
+        border-color: var(--accent-blue);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .selected-item-display {
+        background: var(--primary-bg);
+        padding: var(--spacing-3) var(--spacing-4);
+        border-radius: var(--rounded-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--border-color);
+    }
+    .selected-item-display span {
+        font-weight: 600;
+    }
+    
+    #event-form-container fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+        min-width: 0;
+    }
+    #event-form-container legend {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: var(--spacing-4);
+        padding-bottom: var(--spacing-3);
+        border-bottom: 1px solid var(--border-color);
+        width: 100%;
+    }
+    
+    .form-columns-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-8);
+    }
+
+    .participants-checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: var(--spacing-3);
+        background: var(--primary-bg);
+        padding: var(--spacing-4);
+        border-radius: var(--rounded-lg);
+        border: 1px solid var(--border-color);
+        max-height: 180px;
+        overflow-y: auto;
+    }
+    .participants-checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-2);
+        cursor: pointer;
+        padding: var(--spacing-2);
+        border-radius: var(--rounded-md);
+        transition: background-color 0.2s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+     .participants-checkbox-group label:hover {
+        background-color: var(--glass-bg);
+     }
+    .participants-checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-blue);
+        flex-shrink: 0;
+    }
+    .other-participant-input {
+        margin-top: var(--spacing-3);
+    }
+    
+    @media (max-width: 900px) {
+        .form-columns-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+</style>
+
+<div id="event-log-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="event-log-modal-title">📝 新增事件紀錄</h2>
+            <div class="action-buttons">
+                <button class="close-btn" onclick="closeModal('event-log-modal')">&times;</button>
+            </div>
+        </div>
+        
+        <form id="event-log-form">
+            <input type="hidden" id="event-log-eventId" name="eventId">
+            <input type="hidden" id="event-log-opportunityId" name="opportunityId">
+            <input type="hidden" id="event-log-companyId" name="companyId">
+            <input type="hidden" id="event-log-type" name="originalEventType">
+
+            <div class="form-step-group" id="event-link-section">
+                <label class="form-step-label"><span class="step-number">1</span> 關聯對象 *</label>
+                <div class="segmented-control" id="event-log-link-type" style="margin-bottom: 1rem;">
+                    <input type="radio" name="linkType" value="opportunity" id="link-opp" onchange="toggleEventLinkType()">
+                    <label for="link-opp">機會案件</label>
+                    
+                    <input type="radio" name="linkType" value="company" id="link-comp" onchange="toggleEventLinkType()">
+                    <label for="link-comp">公司總覽</label>
+                </div>
+                <div id="event-log-entity-selector" class="form-group">
+                </div>
+            </div>
+
+            <div class="form-step-group">
+                <label class="form-step-label"><span class="step-number">2</span> 事件類型 *</label>
+                <div class="segmented-control">
+                    <input type="radio" name="eventType" value="general" id="type-general" onchange="loadEventTypeForm(this.value)" checked>
+                    <label for="type-general">一般</label>
+                    
+                    <input type="radio" name="eventType" value="iot" id="type-iot" onchange="loadEventTypeForm(this.value)">
+                    <label for="type-iot">IOT</label>
+                    
+                    <input type="radio" name="eventType" value="dt" id="type-dt" onchange="loadEventTypeForm(this.value)">
+                    <label for="type-dt">DT</label>
+
+                    <input type="radio" name="eventType" value="dx" id="type-dx" onchange="loadEventTypeForm(this.value)">
+                    <label for="type-dx">DX</label>
+                </div>
+            </div>
+
+            <div class="form-step-group">
+                <label class="form-step-label"><span class="step-number">3</span> 詳細內容</label>
+                
+                <div class="form-group" id="admin-created-time-group" style="display: none; background: color-mix(in srgb, var(--accent-red) 10%, var(--primary-bg)); padding: var(--spacing-4); border-radius: var(--rounded-lg); border: 1px solid var(--accent-red); margin-bottom: var(--spacing-5);">
+                    <label for="event-log-createdTime" class="form-label">⚠️ (管理員) 覆寫建立時間</label>
+                    <input type="datetime-local" class="form-input" id="event-log-createdTime" name="createdTime">
+                    <small style="color: var(--text-muted); margin-top: var(--spacing-2); display: block;">僅在編輯模式下有效。請謹慎使用，這會影響資料排序。</small>
+                </div>
+                <div id="event-form-container">
+                    </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="action-btn danger" id="event-log-delete-btn" style="display: none; margin-right: auto;">🗑️ 刪除</button>
+                
+                <button type="submit" class="action-btn primary" id="event-log-submit-btn">💾 儲存</button>
+            </div>
+        </form>
+    </div>
+</div>

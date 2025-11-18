@@ -1,0 +1,273 @@
+<div id="new-opportunity-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">🎯 新增機會案件</h2>
+            <button class="close-btn" onclick="closeModal('new-opportunity-modal')">&times;</button>
+        </div>
+        <form id="new-opportunity-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">機會名稱 *</label>
+                    <input type="text" class="form-input" id="opportunity-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">機會種類</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="opportunity-type">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">聯絡人來源</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <label><input type="radio" name="contact-source" value="existing" onchange="toggleContactInput()" checked> 搜尋潛在客戶</label>
+                    <label><input type="radio" name="contact-source" value="manual" onchange="toggleContactInput()"> 手動輸入</label>
+                </div>
+
+                <div id="existing-contact-section" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">搜尋公司名稱</label>
+                        <input type="text" class="form-input" id="search-company-input" placeholder="輸入公司名稱進行搜尋...">
+                        <div id="company-search-results" class="search-results"></div>
+                    </div>
+                    <div class="form-row">
+                         <div class="form-group">
+                            <label class="form-label">公司所在縣市</label>
+                            <div class="select-wrapper">
+                                <select class="form-select" id="existing-company-county">
+                                    <option value="">請選擇縣市...</option>
+                                    <option value="臺北市">臺北市</option>
+                                    <option value="新北市">新北市</option>
+                                    <option value="桃園市">桃園市</option>
+                                    <option value="臺中市">臺中市</option>
+                                    <option value="臺南市">臺南市</option>
+                                    <option value="高雄市">高雄市</option>
+                                    <option value="基隆市">基隆市</option>
+                                    <option value="新竹市">新竹市</option>
+                                    <option value="嘉義市">嘉義市</option>
+                                    <option value="新竹縣">新竹縣</option>
+                                    <option value="苗栗縣">苗栗縣</option>
+                                    <option value="彰化縣">彰化縣</option>
+                                    <option value="南投縣">南投縣</option>
+                                    <option value="雲林縣">雲林縣</option>
+                                    <option value="嘉義縣">嘉義縣</option>
+                                    <option value="屏東縣">屏東縣</option>
+                                    <option value="宜蘭縣">宜蘭縣</option>
+                                    <option value="花蓮縣">花蓮縣</option>
+                                    <option value="臺東縣">臺東縣</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">選擇聯絡人</label>
+                            <div class="select-wrapper">
+                                <select class="form-select" id="main-contact">
+                                    <option value="">請先搜尋並選擇公司...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="manual-contact-section">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">客戶公司 *</label>
+                            <input type="text" class="form-input" id="customer-company" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">公司所在縣市</label>
+                            <div class="select-wrapper">
+                                <select class="form-select" id="company-county">
+                                    <option value="">請選擇縣市...</option>
+                                    <option value="臺北市">臺北市</option>
+                                    <option value="新北市">新北市</option>
+                                    <option value="桃園市">桃園市</option>
+                                    <option value="臺中市">臺中市</option>
+                                    <option value="臺南市">臺南市</option>
+                                    <option value="高雄市">高雄市</option>
+                                    <option value="基隆市">基隆市</option>
+                                    <option value="新竹市">新竹市</option>
+                                    <option value="嘉義市">嘉義市</option>
+                                    <option value="新竹縣">新竹縣</option>
+                                    <option value="苗栗縣">苗栗縣</option>
+                                    <option value="彰化縣">彰化縣</option>
+                                    <option value="南投縣">南投縣</option>
+                                    <option value="雲林縣">雲林縣</option>
+                                    <option value="嘉義縣">嘉義縣</option>
+                                    <option value="屏東縣">屏東縣</option>
+                                    <option value="宜蘭縣">宜蘭縣</option>
+                                    <option value="花蓮縣">花蓮縣</option>
+                                    <option value="臺東縣">臺東縣</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">主要聯絡人</label>
+                            <input type="text" class="form-input" id="manual-contact">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">聯絡電話</label>
+                            <input type="text" class="form-input" id="manual-phone">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">機會來源</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="opportunity-source">
+                        <option value="">請選擇...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">目前階段</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="current-stage">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">負責業務</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="assignee">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">預計結案日</label>
+                    <input type="date" class="form-input" id="expected-close-date">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">機會價值</label>
+                    <input type="text" class="form-input" id="opportunity-value" placeholder="如: 1,000,000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">備註</label>
+                <textarea class="form-textarea" id="opportunity-notes" placeholder="輸入相關備註..."></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn">🎯 建立機會案件</button>
+        </form>
+    </div>
+</div>
+
+<div id="edit-opportunity-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ 編輯機會案件</h2>
+            <button class="close-btn" onclick="closeModal('edit-opportunity-modal')">&times;</button>
+        </div>
+        <form id="edit-opportunity-form">
+            <input type="hidden" id="edit-opportunity-rowIndex">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">機會名稱 *</label>
+                    <input type="text" class="form-input" id="edit-opportunity-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">機會種類</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="edit-opportunity-type">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">客戶公司</label>
+                    <input type="text" class="form-input" id="edit-customer-company" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">公司所在縣市</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="edit-company-county">
+                            <option value="">讀取中...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">主要聯絡人</label>
+                    <input type="text" class="form-input" id="edit-main-contact" disabled>
+                </div>
+                 <div class="form-group">
+                    <label class="form-label">機會來源</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="edit-opportunity-source">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">目前階段</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="edit-current-stage">
+                           <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">負責業務</label>
+                    <div class="select-wrapper">
+                        <select class="form-select" id="edit-assignee">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">結案日期</label> 
+                    <input type="date" class="form-input" id="edit-expected-close-date">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">機會價值</label>
+                    <input type="text" class="form-input" id="edit-opportunity-value" placeholder="如: 1,000,000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">備註</label>
+                <textarea class="form-textarea" id="edit-opportunity-notes"></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn" style="background: #ffc107; color: #212529;">💾 儲存編輯</button>
+        </form>
+    </div>
+</div>
+
+<div id="kanban-expand-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="kanban-expand-title"></h2>
+            <button class="close-btn" onclick="closeModal('kanban-expand-modal')">&times;</button>
+        </div>
+        <div id="kanban-expand-content" class="widget-content">
+            <div class="loading show"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
