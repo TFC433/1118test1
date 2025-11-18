@@ -36,8 +36,8 @@ const OpportunityInfoCardEvents = (() => {
         // 1. 清理並快取規格設定，同時讀取分類
         _specConfigMap.clear();
         
-        // 準備分組結構
-        const groups = new Map(); // key: categoryName, value: array of config
+        // 準備分組結構 (Map 保留插入順序)
+        const groups = new Map(); 
         const defaultCategory = '其他';
 
         (systemConfig['可能下單規格'] || []).forEach(spec => {
@@ -46,12 +46,11 @@ const OpportunityInfoCardEvents = (() => {
                 note: spec.note || spec.value,
                 price: parseFloat(spec.value2) || 0,
                 behavior: spec.value3 || 'boolean',
-                category: spec.category || defaultCategory // 從 reader 讀取的分類
+                category: spec.category || defaultCategory
             };
             
             _specConfigMap.set(spec.value, configItem);
 
-            // 分組邏輯
             if (!groups.has(configItem.category)) {
                 groups.set(configItem.category, []);
             }
@@ -111,15 +110,14 @@ const OpportunityInfoCardEvents = (() => {
             return `<div class="select-wrapper"><select class="form-select" data-field="${dataField}">${optionsHtml}</select></div>`;
         };
 
-        // --- 【修改】輔助函式：產生分組後的規格標籤 ---
+        // --- 輔助函式：產生分組後的規格標籤 ---
         let specsHtml = '';
         
-        // 確保「其他」分類排在最後
-        const sortedCategories = Array.from(groups.keys()).sort((a, b) => {
-            if (a === defaultCategory) return 1;
-            if (b === defaultCategory) return -1;
-            return a.localeCompare(b);
-        });
+        let sortedCategories = Array.from(groups.keys());
+        if (sortedCategories.includes(defaultCategory)) {
+            sortedCategories = sortedCategories.filter(c => c !== defaultCategory);
+            sortedCategories.push(defaultCategory);
+        }
 
         sortedCategories.forEach(category => {
             const items = groups.get(category);
@@ -142,7 +140,6 @@ const OpportunityInfoCardEvents = (() => {
                 `;
             });
 
-            // 為每個分類建立一個區塊
             specsHtml += `
                 <div class="spec-category-group">
                     <div class="spec-category-title">▼ ${category}</div>
@@ -156,7 +153,7 @@ const OpportunityInfoCardEvents = (() => {
         if (specsHtml === '') specsHtml = '<span>系統設定中未定義「可能下單規格」。</span>';
 
 
-        // 6. 產生表單 HTML (使用雙欄獨立佈局)
+        // 6. 產生表單 HTML
         container.innerHTML = `
             <div class="info-card-body-layout">
             

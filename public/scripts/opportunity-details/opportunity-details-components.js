@@ -1,6 +1,6 @@
 // views/scripts/opportunity-details/opportunity-details-components.js
 // 職責：整合機會詳細頁面中所有「純顯示」與「可編輯資訊卡」的組件
-// (V6 - 支援分類群組樣式 + 雙欄獨立流動佈局)
+// (V8 - 顯示模式支援藍色亮燈樣式)
 
 function _injectStylesForOppInfoCard() {
     const styleId = 'opportunity-info-card-styles';
@@ -25,23 +25,23 @@ function _injectStylesForOppInfoCard() {
             border-bottom: 1px solid var(--border-color);
         }
         
-        /* --- 【修改】雙欄獨立佈局 (非 Grid) --- */
+        /* --- 雙欄獨立佈局 --- */
         .info-card-body-layout {
             display: flex;
             gap: var(--spacing-8);
-            align-items: flex-start; /* 頂部對齊，高度互不影響 */
+            align-items: flex-start;
         }
         .info-col {
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: var(--spacing-5);
-            min-width: 0; /* 防止內容撐爆 */
+            min-width: 0;
         }
         
         @media (max-width: 900px) {
             .info-card-body-layout {
-                flex-direction: column; /* 手機版變單欄堆疊 */
+                flex-direction: column;
             }
         }
 
@@ -77,7 +77,6 @@ function _injectStylesForOppInfoCard() {
             color: var(--accent-green);
         }
         
-        /* 標籤樣式 (顯示模式) */
         .info-tag-value {
             display: inline-block;
             padding: 6px 14px;
@@ -102,39 +101,69 @@ function _injectStylesForOppInfoCard() {
             width: 100%;
         }
 
-        /* --- Pills 容器樣式 --- */
-        .pills-container {
-            background: var(--primary-bg);
-            padding: var(--spacing-4);
-            border-radius: var(--rounded-lg);
-            border: 1px solid var(--border-color);
-            /* 移除 flex，因為內部有分組標題區塊 */
-        }
-        /* 單選按鈕容器 (如負責業務) 保持 Flex */
-        .pills-container.single-select-container {
+        /* --- 顯示模式的選項樣式 --- */
+        .info-options-item {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            gap: var(--spacing-3);
+        }
+        .info-options-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .info-options-group-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        /* 選項按鈕基礎樣式 */
+        .info-option {
+            padding: 4px 12px;
+            border-radius: var(--rounded-full);
+            font-size: 0.8rem;
+            font-weight: 500;
+            background-color: var(--primary-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+            opacity: 0.5; /* 未選中時半透明 */
+        }
+        /* 選中時亮燈 (預設綠色) */
+        .info-option.selected {
+            background-color: color-mix(in srgb, var(--accent-green) 20%, transparent);
+            color: var(--accent-green);
+            border-color: var(--accent-green);
+            font-weight: 700;
+            opacity: 1;
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+        }
+        
+        /* 【新增】藍色亮燈樣式 */
+        .info-option.selected.blue {
+            background-color: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
         }
 
-        /* --- 【新增】分類群組樣式 --- */
+        /* --- 分類群組樣式 --- */
         .spec-category-group {
-            margin-bottom: 12px;
-        }
-        .spec-category-group:last-child {
-            margin-bottom: 0;
+            margin-bottom: 4px;
         }
         .spec-category-title {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            color: var(--text-muted);
+            color: var(--text-secondary);
             margin-bottom: 6px;
             padding-left: 2px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            opacity: 0.8;
         }
         .spec-category-title::after {
             content: '';
@@ -146,9 +175,21 @@ function _injectStylesForOppInfoCard() {
         .spec-pills-wrapper {
             display: flex;
             flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* --- 編輯模式下的 Pills 樣式 --- */
+        .pills-container {
+            background: var(--primary-bg);
+            padding: var(--spacing-4);
+            border-radius: var(--rounded-lg);
+            border: 1px solid var(--border-color);
+        }
+        .pills-container.single-select-container {
+            display: flex;
+            flex-wrap: wrap;
             gap: 8px;
         }
-        /* --- 新增結束 --- */
 
         .info-option-pill {
             padding: 6px 14px;
@@ -212,7 +253,7 @@ function _injectStylesForOppInfoCard() {
             font-size: var(--font-size-sm);
             color: var(--text-secondary);
             cursor: pointer;
-            white-space: normal; /* 允許換行 */
+            white-space: normal;
             line-height: 1.5;
         }
         .manual-override-label input[type="checkbox"] {
@@ -229,21 +270,6 @@ function _injectStylesForOppInfoCard() {
             color: var(--text-muted);
             cursor: not-allowed;
             opacity: 0.8;
-        }
-        
-        /* 顯示模式的選項樣式 */
-        .info-options-item { display: flex; flex-direction: column; gap: var(--spacing-3); }
-        .info-options-label { font-size: var(--font-size-sm); color: var(--text-muted); font-weight: 500; }
-        .info-options-group { display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
-        .info-option {
-            padding: 6px 14px; border-radius: var(--rounded-full);
-            font-size: var(--font-size-sm); font-weight: 500;
-            background-color: var(--primary-bg); color: var(--text-muted);
-            border: 1px solid var(--border-color); transition: all 0.2s ease;
-        }
-        .info-option.selected {
-            background-color: color-mix(in srgb, var(--accent-green) 20%, transparent);
-            color: var(--accent-green); border-color: var(--accent-green); font-weight: 600;
         }
     `;
     document.head.appendChild(style);
@@ -267,13 +293,24 @@ const OpportunityInfoCard = (() => {
         `;
     }
 
-    function _renderOptionsGroup(configKey, selectedValue, label) {
+    /**
+     * 渲染選項群組 (檢視模式) - 支援分類顯示與亮燈效果
+     * @param {string} colorClass - (可選) 額外的 CSS 類別，例如 'blue'
+     */
+    function _renderOptionsGroup(configKey, selectedValue, label, colorClass = '') {
         const systemConfig = window.CRM_APP ? window.CRM_APP.systemConfig : {};
         const options = systemConfig[configKey] || [];
+        
         if (options.length === 0) {
-             return `<div class="info-options-item"><div class="info-options-label">${label}</div><div class="info-value">-</div></div>`;
+             return `
+                <div class="info-options-item">
+                    <div class="info-options-label">${label}</div>
+                    <div class="info-value">-</div>
+                </div>
+            `;
         }
 
+        // 1. 解析選取的值
         const selectedMap = new Map();
         try {
             const parsedJson = JSON.parse(selectedValue);
@@ -290,27 +327,65 @@ const OpportunityInfoCard = (() => {
             }
         }
 
-        let allItemsHtml = '';
+        // 2. 依照分類分組
+        const groups = new Map();
+        const defaultCategory = '其他';
+
         options.forEach(opt => {
-            const isSelected = selectedMap.has(opt.value);
-            const quantity = selectedMap.get(opt.value) || 0;
-            const behavior = opt.value3 || 'boolean';
-            const selectedClass = isSelected ? 'selected' : '';
-            let displayText = opt.note || opt.value;
-            if (isSelected && behavior === 'allow_quantity' && quantity > 0) {
-                displayText = `${displayText} (x${quantity})`;
+            const category = opt.category || defaultCategory;
+            if (!groups.has(category)) {
+                groups.set(category, []);
             }
-            if (isSelected) {
-                 allItemsHtml += `<span class="info-option ${selectedClass}">${displayText}</span>`;
+            groups.get(category).push(opt);
+        });
+
+        // 3. 產生 HTML
+        let finalHtml = '';
+        
+        let sortedCategories = Array.from(groups.keys());
+        if (sortedCategories.includes(defaultCategory)) {
+            sortedCategories = sortedCategories.filter(c => c !== defaultCategory);
+            sortedCategories.push(defaultCategory);
+        }
+
+        sortedCategories.forEach(category => {
+            const items = groups.get(category);
+            let pillsHtml = '';
+            
+            items.forEach(opt => {
+                const isSelected = selectedMap.has(opt.value);
+                const quantity = selectedMap.get(opt.value) || 0;
+                const behavior = opt.value3 || 'boolean';
+                const selectedClass = isSelected ? 'selected' : '';
+                
+                let displayText = opt.note || opt.value;
+                if (isSelected && behavior === 'allow_quantity' && quantity > 0) {
+                    displayText = `${displayText} (x${quantity})`;
+                }
+
+                // 【修改】加入 colorClass 參數
+                pillsHtml += `<span class="info-option ${selectedClass} ${colorClass}">${displayText}</span>`;
+            });
+
+            const showHeader = (groups.size > 1) || (category !== defaultCategory);
+
+            if (showHeader) {
+                finalHtml += `
+                    <div class="spec-category-group">
+                        <div class="spec-category-title">▼ ${category}</div>
+                        <div class="spec-pills-wrapper">
+                            ${pillsHtml}
+                        </div>
+                    </div>`;
+            } else {
+                finalHtml += `<div class="spec-pills-wrapper">${pillsHtml}</div>`;
             }
         });
-        
-        if (allItemsHtml === '') allItemsHtml = '<span class="info-value">-</span>';
 
         return `
             <div class="info-options-item">
                 <div class="info-options-label">${label}</div>
-                <div class="info-options-group">${allItemsHtml}</div>
+                <div class="info-options-group-wrapper">${finalHtml}</div>
             </div>
         `;
     }
@@ -345,7 +420,7 @@ const OpportunityInfoCard = (() => {
             valueTypeBadge = `<span class="card-tag" style="background: var(--accent-green); color: white; font-size: 0.7rem; margin-left: 8px;" title="根據「可能下單規格」自動估算">估算</span>`;
         }
 
-        // 【修改】使用雙欄 (info-col) 佈局，確保左右高度獨立
+        // 【修改】呼叫 _renderOptionsGroup 時傳入 'blue' 參數
         return `
             <div class="info-card-header">
                 <h2 class="widget-title" style="margin: 0;">機會核心資訊</h2>
@@ -381,13 +456,13 @@ const OpportunityInfoCard = (() => {
                 </div>
 
                 <div class="info-col">
-                    ${_renderOptionsGroup('下單機率', opp.orderProbability, '下單機率').match(/<div class="info-options-group">[\s\S]*?<\/div>/) ? `<div class="info-item"><div class="info-options-label">下單機率</div>${_renderOptionsGroup('下單機率', opp.orderProbability, '').match(/<div class="info-options-group">[\s\S]*?<\/div>/)[0]}</div>` : ''}
+                    ${_renderOptionsGroup('下單機率', opp.orderProbability, '下單機率', 'blue')}
                     
-                    ${_renderOptionsGroup('可能下單規格', opp.potentialSpecification, '可能下單規格').match(/<div class="info-options-group">[\s\S]*?<\/div>/) ? `<div class="info-item"><div class="info-options-label">可能下單規格</div>${_renderOptionsGroup('可能下單規格', opp.potentialSpecification, '').match(/<div class="info-options-group">[\s\S]*?<\/div>/)[0]}</div>` : ''}
+                    ${_renderOptionsGroup('可能下單規格', opp.potentialSpecification, '可能下單規格')}
                     
-                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道').match(/<div class="info-options-group">[\s\S]*?<\/div>/) ? `<div class="info-item"><div class="info-options-label">可能銷售管道</div>${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '').match(/<div class="info-options-group">[\s\S]*?<\/div>/)[0]}</div>` : ''}
+                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道', 'blue')}
                     
-                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模').match(/<div class="info-options-group">[\s\S]*?<\/div>/) ? `<div class="info-item"><div class="info-options-label">設備規模</div>${_renderOptionsGroup('設備規模', opp.deviceScale, '').match(/<div class="info-options-group">[\s\S]*?<\/div>/)[0]}</div>` : ''}
+                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模', 'blue')}
                 </div>
             </div>
 

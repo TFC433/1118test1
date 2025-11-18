@@ -35,7 +35,7 @@ class SystemReader extends BaseReader {
             if (rows.length <= 1) return {};
             
             const settings = {};
-            // 初始化事件類型 (硬編碼部分)
+            // 初始化事件類型 (硬編碼部分，確保基本類型存在)
             if (!settings['事件類型']) {
                 settings['事件類型'] = [
                     { value: 'general', note: '一般', order: 1, color: '#6c757d' },
@@ -65,6 +65,7 @@ class SystemReader extends BaseReader {
                 }
             });
             
+            // 依照順序欄位排序
             Object.keys(settings).forEach(type => settings[type].sort((a, b) => a.order - b.order));
             
             this.cache[cacheKey] = { data: settings, timestamp: now };
