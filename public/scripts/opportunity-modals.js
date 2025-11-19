@@ -4,7 +4,7 @@
 // ==================== 全域變數 ====================
 let allSearchedContacts = [];
 let companySearchTimeout;
-let linkOppSearchTimeout; // 【修正】改名以避免與 event-modal-manager.js 衝突
+let linkOppSearchTimeout;
 
 // ==================== Wizard 核心邏輯 (新增機會專用) ====================
 const NewOppWizard = {
@@ -49,6 +49,19 @@ const NewOppWizard = {
         }
         
         this.renderStep();
+    },
+
+    // 【新增】從聯絡人列表直接啟動 Wizard 並帶入資料
+    startWithContact: function(contact) {
+        // 1. 先顯示並重置 Wizard
+        this.show();
+        
+        // 2. 設定路徑狀態為 'card' (名片轉入模式)
+        this.state.path = 'card';
+        
+        // 3. 直接呼叫 selectCard 邏輯來填入資料並跳轉
+        // 這會自動設定 companyName, mainContact, sourceId 等，並執行 nextStep()
+        this.selectCard(contact);
     },
 
     // 內部 UI 調整函式
@@ -215,6 +228,7 @@ const NewOppWizard = {
         const nameInput = document.getElementById('wiz-opp-name');
         if (nameInput) nameInput.value = '';
 
+        // 自動跳到下一步
         this.nextStep();
     },
 
@@ -667,8 +681,8 @@ function showLinkOpportunityModal(currentOppId, currentOppRowIndex) {
     };
     performSearch('');
     searchInput.onkeyup = (e) => {
-        clearTimeout(eventOppSearchTimeout);
-        eventOppSearchTimeout = setTimeout(() => performSearch(e.target.value.trim()), 400); // 【修正】使用已更名的變數
+        clearTimeout(linkOppSearchTimeout);
+        linkOppSearchTimeout = setTimeout(() => performSearch(e.target.value.trim()), 400); 
     };
 }
 
