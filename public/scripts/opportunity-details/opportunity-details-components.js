@@ -1,6 +1,6 @@
 // views/scripts/opportunity-details/opportunity-details-components.js
 // 職責：整合機會詳細頁面中所有「純顯示」與「可編輯資訊卡」的組件
-// (V8 - 顯示模式支援藍色亮燈樣式)
+// (V12 - 顯示模式微調：設備規模移至銷售管道上方)
 
 function _injectStylesForOppInfoCard() {
     const styleId = 'opportunity-info-card-styles';
@@ -128,7 +128,7 @@ function _injectStylesForOppInfoCard() {
             color: var(--text-muted);
             border: 1px solid var(--border-color);
             transition: all 0.2s ease;
-            opacity: 0.5; /* 未選中時半透明 */
+            opacity: 0.5;
         }
         /* 選中時亮燈 (預設綠色) */
         .info-option.selected {
@@ -139,8 +139,7 @@ function _injectStylesForOppInfoCard() {
             opacity: 1;
             box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
         }
-        
-        /* 【新增】藍色亮燈樣式 */
+        /* 藍色亮燈樣式 */
         .info-option.selected.blue {
             background-color: color-mix(in srgb, var(--accent-blue) 20%, transparent);
             color: var(--accent-blue);
@@ -293,10 +292,6 @@ const OpportunityInfoCard = (() => {
         `;
     }
 
-    /**
-     * 渲染選項群組 (檢視模式) - 支援分類顯示與亮燈效果
-     * @param {string} colorClass - (可選) 額外的 CSS 類別，例如 'blue'
-     */
     function _renderOptionsGroup(configKey, selectedValue, label, colorClass = '') {
         const systemConfig = window.CRM_APP ? window.CRM_APP.systemConfig : {};
         const options = systemConfig[configKey] || [];
@@ -310,7 +305,6 @@ const OpportunityInfoCard = (() => {
             `;
         }
 
-        // 1. 解析選取的值
         const selectedMap = new Map();
         try {
             const parsedJson = JSON.parse(selectedValue);
@@ -327,7 +321,6 @@ const OpportunityInfoCard = (() => {
             }
         }
 
-        // 2. 依照分類分組
         const groups = new Map();
         const defaultCategory = '其他';
 
@@ -339,9 +332,7 @@ const OpportunityInfoCard = (() => {
             groups.get(category).push(opt);
         });
 
-        // 3. 產生 HTML
         let finalHtml = '';
-        
         let sortedCategories = Array.from(groups.keys());
         if (sortedCategories.includes(defaultCategory)) {
             sortedCategories = sortedCategories.filter(c => c !== defaultCategory);
@@ -363,7 +354,6 @@ const OpportunityInfoCard = (() => {
                     displayText = `${displayText} (x${quantity})`;
                 }
 
-                // 【修改】加入 colorClass 參數
                 pillsHtml += `<span class="info-option ${selectedClass} ${colorClass}">${displayText}</span>`;
             });
 
@@ -420,7 +410,6 @@ const OpportunityInfoCard = (() => {
             valueTypeBadge = `<span class="card-tag" style="background: var(--accent-green); color: white; font-size: 0.7rem; margin-left: 8px;" title="根據「可能下單規格」自動估算">估算</span>`;
         }
 
-        // 【修改】呼叫 _renderOptionsGroup 時傳入 'blue' 參數
         return `
             <div class="info-card-header">
                 <h2 class="widget-title" style="margin: 0;">機會核心資訊</h2>
@@ -442,10 +431,6 @@ const OpportunityInfoCard = (() => {
                         <span class="info-value">${formatCurrency(opp.opportunityValue)} ${valueTypeBadge}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">預計結案日期</span>
-                        <span class="info-value">${formatDate(opp.expectedCloseDate)}</span>
-                    </div>
-                    <div class="info-item">
                         <span class="info-label">機會種類</span>
                         <span class="info-tag-value" data-color style="--brand-color: ${typeColor};">${typeNote}</span>
                     </div>
@@ -453,16 +438,19 @@ const OpportunityInfoCard = (() => {
                         <span class="info-label">機會來源</span>
                         <span class="info-tag-value">${sourceNote}</span>
                     </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">預計結案日期</span>
+                        <span class="info-value">${formatDate(opp.expectedCloseDate)}</span>
+                    </div>
+
+                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模', 'blue')}
+                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道', 'blue')}
                 </div>
 
                 <div class="info-col">
                     ${_renderOptionsGroup('下單機率', opp.orderProbability, '下單機率', 'blue')}
-                    
                     ${_renderOptionsGroup('可能下單規格', opp.potentialSpecification, '可能下單規格')}
-                    
-                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道', 'blue')}
-                    
-                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模', 'blue')}
                 </div>
             </div>
 
