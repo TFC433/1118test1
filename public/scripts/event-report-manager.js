@@ -88,7 +88,7 @@ function _renderParticipantsPills(participantsStr, typeClass, contextContacts = 
     if (!participantsStr) return '-';
 
     // 切割：只認逗號
-    const names = participantsStr.split(/[,，]+/)
+    const names = participantsStr.split(/[,，、]+/)
         .map(s => s.trim())
         .filter(Boolean);
 

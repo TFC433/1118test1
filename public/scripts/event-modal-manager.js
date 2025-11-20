@@ -1,13 +1,17 @@
 // views/scripts/event-modal-manager.js
 // 職責：管理所有與「新增/編輯事件」彈出視窗相關的複雜邏輯
-// (版本: 還原舊版 + 修正職稱保存)
+// (版本 V5: 類報告式介面 + DOM清理 + 資料防呆)
 
 let eventOppSearchTimeout;
 let eventCompanySearchTimeout;
 
-// 入口函式：決定是開啟「新增精靈」還是「編輯視窗」
+// 用於編輯視窗的人員選擇狀態
+let selectedEditOurParticipants = new Set();
+let selectedEditClientParticipants = new Set();
+
+// 入口函式
 async function showEventLogFormModal(options = {}) {
-    // ==================== 【分流邏輯】 ====================
+    // 分流：若無 eventId 則開啟精靈
     if (!options.eventId) {
         if (window.EventWizard) {
             EventWizard.show(options);
@@ -17,11 +21,7 @@ async function showEventLogFormModal(options = {}) {
         }
         return; 
     }
-    // ==================== 【分流結束】 ====================
 
-
-    // --- 以下為原本的「編輯模式」邏輯 ---
-    
     if (!document.getElementById('event-log-modal')) {
         console.error('Event log modal HTML not loaded!');
         showNotification('無法開啟事件紀錄視窗，元件遺失。', 'error');
@@ -31,36 +31,24 @@ async function showEventLogFormModal(options = {}) {
     const form = document.getElementById('event-log-form');
     form.reset();
     
-    // 重設表單後，手動隱藏管理員欄位
-    const adminTimeGroup = document.getElementById('admin-created-time-group');
-    if (adminTimeGroup) adminTimeGroup.style.display = 'none';
+    // 重置人員選擇 Set
+    selectedEditOurParticipants.clear();
+    selectedEditClientParticipants.clear();
     
     showModal('event-log-modal');
 
     const title = document.getElementById('event-log-modal-title');
     const submitBtn = document.getElementById('event-log-submit-btn');
-    const linkSection = document.getElementById('event-link-section');
-    const typeSelectorContainer = form.querySelector('.segmented-control');
-    
-    // 獲取刪除按鈕
     const deleteBtn = document.getElementById('event-log-delete-btn');
 
-    // 進入此區塊必定是編輯模式
     title.textContent = '✏️ 編輯事件紀錄';
     submitBtn.textContent = '💾 儲存變更';
-    linkSection.style.display = 'none'; 
-    
-    if(typeSelectorContainer) {
-        typeSelectorContainer.style.pointerEvents = 'auto';
-        typeSelectorContainer.style.opacity = '1';
-    }
 
     try {
         const result = await authedFetch(`/api/events/${options.eventId}`);
         if (!result.success) throw new Error('無法載入事件資料');
         const eventData = result.data;
         
-        // 顯示並綁定刪除按鈕
         deleteBtn.style.display = 'block';
         deleteBtn.onclick = () => confirmDeleteEvent(eventData.eventId, eventData.eventName);
 
@@ -71,9 +59,7 @@ async function showEventLogFormModal(options = {}) {
     }
 }
 
-/**
- * 刪除事件的確認函式
- */
+// 刪除事件
 async function confirmDeleteEvent(eventId, eventName) {
     const safeEventName = eventName || '此事件';
     const message = `您確定要永久刪除事件 "${safeEventName}" 嗎？\n\n此操作無法復原，但系統會留下一筆刪除互動紀錄。`;
@@ -81,13 +67,9 @@ async function confirmDeleteEvent(eventId, eventName) {
     showConfirmDialog(message, async () => {
         showLoading('正在刪除事件...');
         try {
-            const result = await authedFetch(`/api/events/${eventId}`, {
-                method: 'DELETE'
-            });
+            await authedFetch(`/api/events/${eventId}`, { method: 'DELETE' });
         } catch (error) {
-            if (error.message !== 'Unauthorized') {
-                console.error('刪除事件失敗:', error);
-            }
+            if (error.message !== 'Unauthorized') console.error('刪除事件失敗:', error);
         } finally {
             hideLoading();
             closeModal('event-log-modal');
@@ -96,130 +78,198 @@ async function confirmDeleteEvent(eventId, eventName) {
     });
 }
 
-// 切換關聯類型
-function toggleEventLinkType() {
-    const linkType = document.querySelector('input[name="linkType"]:checked').value;
-    const entitySelector = document.getElementById('event-log-entity-selector');
-    
-    document.getElementById('event-log-opportunityId').value = '';
-    document.getElementById('event-log-companyId').value = '';
-    
-    if (linkType === 'opportunity') {
-        entitySelector.innerHTML = `
-            <label for="event-log-search-opportunity" class="form-label">搜尋並選擇關聯機會 *</label>
-            <input type="text" id="event-log-search-opportunity" class="form-input" placeholder="輸入機會名稱或公司...">
-            <div id="event-log-opportunity-results" class="search-result-list"></div>
-        `;
-        document.getElementById('event-log-search-opportunity').addEventListener('keyup', handleOpportunitySearchForEvent);
-    } else {
-        entitySelector.innerHTML = `
-            <label for="event-log-search-company" class="form-label">搜尋並選擇關聯公司 *</label>
-            <input type="text" id="event-log-search-company" class="form-input" placeholder="輸入公司名稱...">
-            <div id="event-log-company-results" class="search-result-list"></div>
-        `;
-        document.getElementById('event-log-search-company').addEventListener('keyup', handleCompanySearchForEvent);
-    }
-    _populateClientParticipantsCheckboxes([], []);
-}
+// [核心功能] 切換事件類型 (含防呆與合併邏輯)
+function selectEventTypeForEdit(newType, cardElement) {
+    const currentTypeInput = document.getElementById('event-log-type');
+    const currentType = currentTypeInput.value;
 
-// 收集共通欄位資料
-function _getCommonFieldData(container) {
-    if (!container) return {};
-    const data = {};
-    const commonFieldNames = [
-        'eventName', 'visitPlace', 'eventContent',
-        'clientQuestions', 'clientIntelligence', 'eventNotes'
-    ];
+    if (currentType === newType) return; // 沒變則不做事
+
+    // 1. 檢查當前【下層容器】是否有填寫專屬資料
+    const formContainer = document.getElementById('event-form-container');
+    const inputs = formContainer.querySelectorAll('input, textarea, select');
     
-    commonFieldNames.forEach(name => {
-        const element = container.querySelector(`[name="${name}"]`);
-        if (element) data[name] = element.value;
+    let hasData = false;
+    let mergedDataString = '';
+
+    inputs.forEach(input => {
+        // 排除 hidden, submit, button
+        if (input.type === 'hidden' || input.type === 'submit' || input.type === 'button') return;
+        // 排除共通欄位 (如果意外殘留的話)
+        if (['eventName', 'visitPlace', 'eventNotes', 'ourParticipants', 'clientParticipants'].includes(input.name)) return;
+
+        // 檢查值
+        if (input.value && input.value.trim() !== '') {
+            hasData = true;
+            // 取得欄位名稱 Label (往上找)
+            let label = input.name;
+            const labelEl = input.closest('.form-group')?.querySelector('.form-label') || input.closest('.form-group')?.querySelector('label');
+            if (labelEl) label = labelEl.innerText.replace('*', '').trim();
+            
+            mergedDataString += `[${label}]: ${input.value}\n`;
+        }
     });
 
-    data.ourParticipants = Array.from(container.querySelectorAll('[name="ourParticipants"]:checked')).map(cb => cb.value);
-    
-    const clientParticipantsChecked = Array.from(container.querySelectorAll('[name="clientParticipants-checkbox"]:checked')).map(cb => cb.value);
-    const otherParticipant = container.querySelector('[name="clientParticipants-other"]')?.value.trim();
-    if (otherParticipant) {
-        clientParticipantsChecked.push(...otherParticipant.split(',').map(p => p.trim()).filter(Boolean));
-    }
-    data.clientParticipants = clientParticipantsChecked; 
-
-    return data;
-}
-
-// 填充共通欄位資料
-function _setCommonFieldData(container, data) {
-    if (!container || !data) return;
-    for (const key in data) {
-        if (key !== 'ourParticipants' && key !== 'clientParticipants') {
-            const element = container.querySelector(`[name="${key}"]`);
-            if (element) element.value = data[key];
-        }
+    if (hasData) {
+        const message = `您即將從 ${currentType} 切換為 ${newType}。\n\n⚠️ 警告：這將移除目前的專屬欄位資料 (如設備規模等)！\n\n系統會自動將舊資料備份到「備註」欄位。\n確定要繼續嗎？`;
+        
+        showConfirmDialog(message, () => {
+            // 使用者確認 -> 執行切換並合併
+            _applyTypeSwitch(newType, cardElement, mergedDataString);
+        });
+    } else {
+        // 無資料 -> 直接切換
+        _applyTypeSwitch(newType, cardElement, '');
     }
 }
 
-// 動態載入不同類型的表單範本
-async function loadEventTypeForm(eventType) {
+// 執行切換動作
+function _applyTypeSwitch(newType, cardElement, dataToMerge) {
+    // 1. 更新 UI (亮燈)
+    document.querySelectorAll('.type-select-card').forEach(el => el.classList.remove('selected'));
+    if (cardElement) cardElement.classList.add('selected');
+    else {
+        const targetCard = document.querySelector(`.type-select-card[data-type="${newType}"]`);
+        if(targetCard) targetCard.classList.add('selected');
+    }
+
+    // 2. 更新隱藏欄位
+    document.getElementById('event-log-type').value = newType;
+
+    // 3. 載入新表單 (傳入 dataToMerge)
+    loadEventTypeForm(newType, dataToMerge);
+}
+
+
+// 動態載入表單範本 (含 DOM 清理與備註合併)
+async function loadEventTypeForm(eventType, dataToMerge = '') {
     const formContainer = document.getElementById('event-form-container');
-    const eventTypeInput = document.getElementById('event-log-type');
-    if (!formContainer || !eventTypeInput) return;
-    
-    const commonData = _getCommonFieldData(formContainer);
+    if (!formContainer) return;
 
     let formName = eventType === 'dx' ? 'general' : eventType;
-    eventTypeInput.value = eventType;
+    
+    // 顯示載入中
+    formContainer.innerHTML = '<div class="loading show"><div class="spinner"></div></div>';
 
-    const template = window.CRM_APP.formTemplates[formName];
-    if (template) {
-        formContainer.innerHTML = template;
-    } else {
-        formContainer.innerHTML = '<div class="loading show"><div class="spinner"></div></div>';
+    let templateHtml = window.CRM_APP.formTemplates[formName];
+    if (!templateHtml) {
         try {
             const response = await fetch(`event-form-${formName}.html`);
             if (!response.ok) throw new Error(`找不到 ${formName} 的表單範本`);
-            formContainer.innerHTML = await response.text();
+            templateHtml = await response.text();
+            window.CRM_APP.formTemplates[formName] = templateHtml; // 快取
         } catch (error) {
             formContainer.innerHTML = `<div class="alert alert-error">無法載入 ${eventType} 表單。</div>`;
             return;
         }
     }
+    
+    // 渲染 HTML
+    formContainer.innerHTML = templateHtml;
 
-    _setCommonFieldData(formContainer, commonData);
-    _populateOurParticipantsCheckboxes(commonData.ourParticipants || []);
+    // --- 【關鍵修改：DOM 清理】移除下層重複的共通欄位 ---
+    // 因為 eventName, visitPlace, participants 已經移到上層了
+    // 我們透過 Name 或 ID 來查找並移除它們的父容器 (.form-group)
+    const fieldsToRemove = ['eventName', 'visitPlace', 'ourParticipants', 'clientParticipants', 'clientParticipants-checkbox'];
+    
+    fieldsToRemove.forEach(name => {
+        // 嘗試找 input[name="..."]
+        const els = formContainer.querySelectorAll(`[name="${name}"], [id="event-name"], [id="visit-place"]`);
+        els.forEach(el => {
+            const group = el.closest('.form-group');
+            if (group) group.remove();
+        });
+    });
+    
+    // 移除可能殘留的 fieldset legend (如果變成空的)
+    const fieldsets = formContainer.querySelectorAll('fieldset');
+    fieldsets.forEach(fs => {
+        // 檢查是否只剩下 legend
+        if (fs.children.length <= 1) fs.remove();
+        // 或者如果 legend 寫著 "會議共通資訊"，直接移除該 legend 或整塊
+        const legend = fs.querySelector('legend');
+        if (legend && legend.textContent.includes('會議共通資訊')) {
+            // 移除整個 fieldset，因為共通資訊都在上面了 (除非備註還在裡面)
+            // 檢查備註是否在裡面
+            if (!fs.querySelector('[name="eventNotes"]')) {
+                fs.remove();
+            } else {
+                // 如果備註還在，只移除 legend
+                legend.remove();
+            }
+        }
+    });
 
-    const opportunityId = document.getElementById('event-log-opportunityId').value;
-    const companyId = document.getElementById('event-log-companyId').value;
-    const clientParticipantsArray = Array.isArray(commonData.clientParticipants) ? commonData.clientParticipants : (commonData.clientParticipants || '').split(',').map(p => p.trim());
-    await _fetchAndPopulateClientParticipants(opportunityId, companyId, clientParticipantsArray);
+    // --- 【關鍵修改：資料合併】 ---
+    if (dataToMerge) {
+        const notesInput = document.getElementById('event-notes'); // 備註欄位 (ID 通常是 event-notes)
+        if (notesInput) {
+            const existingNotes = notesInput.value;
+            const header = `\n\n【系統自動備份 - 原資料】\n`;
+            notesInput.value = existingNotes + header + dataToMerge;
+        }
+    }
 }
 
-// 渲染我方與會人員 Checkbox
-function _populateOurParticipantsCheckboxes(selectedParticipants = []) {
-    const container = document.getElementById('our-participants-container');
-    if (!container) return;
+// 填充表單資料 (編輯模式核心)
+async function populateEventLogForm(eventData) {
+    // 1. 填入隱藏與基本欄位 (上層與中層)
+    document.getElementById('event-log-eventId').value = eventData.eventId;
+    document.getElementById('event-log-opportunityId').value = eventData.opportunityId || '';
+    document.getElementById('event-log-companyId').value = eventData.companyId || '';
+    
+    // 這些欄位現在位於上層/中層
+    document.getElementById('event-log-name').value = eventData.eventName || '';
+    document.getElementById('event-log-location').value = eventData.visitPlace || '';
 
-    const members = window.CRM_APP.systemConfig['團隊成員'] || [];
-    if (members.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted);">系統設定中未找到團隊成員</p>';
-        return;
+    // 2. 處理時間 (轉換為 local datetime string)
+    if (eventData.createdTime) {
+        try {
+            const date = new Date(eventData.createdTime);
+            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+            document.getElementById('event-log-createdTime').value = date.toISOString().slice(0, 16);
+        } catch (e) { console.warn("時間格式錯誤", e); }
     }
-    const selectedSet = new Set(selectedParticipants);
-    container.innerHTML = members.map(member => `
-        <label>
-            <input type="checkbox" name="ourParticipants" value="${member.note}" ${selectedSet.has(member.note) ? 'checked' : ''}>
-            <span>${member.note}</span>
-        </label>
-    `).join('');
+
+    // 3. 設定類型與載入下層表單
+    const eventType = eventData.eventType || 'general';
+    const typeToSelect = eventType === 'legacy' ? 'iot' : eventType;
+    
+    document.getElementById('event-log-type').value = typeToSelect;
+    // 呼叫切換 (傳入 null 表示不需要合併資料，因為這是初始載入)
+    _applyTypeSwitch(typeToSelect, null, null);
+
+    // 4. 處理參與人員 (渲染膠囊)
+    const ourList = (eventData.ourParticipants || '').split(',').map(p => p.trim()).filter(Boolean);
+    ourList.forEach(p => selectedEditOurParticipants.add(p));
+    _renderEditParticipants('our', 'edit-our-participants-container', window.CRM_APP.systemConfig['團隊成員'] || [], selectedEditOurParticipants);
+
+    const clientList = (eventData.clientParticipants || '').split(',').map(p => p.trim()).filter(Boolean);
+    await _fetchAndPopulateClientParticipantsForEdit(eventData.opportunityId, eventData.companyId, clientList);
+
+    // 5. 填入下層詳細欄位 (等待表單載入後)
+    setTimeout(() => {
+        const form = document.getElementById('event-log-form');
+        for (const key in eventData) {
+            // 跳過已在上層處理過的欄位
+            if (['eventId', 'opportunityId', 'companyId', 'eventName', 'visitPlace', 'createdTime', 'ourParticipants', 'clientParticipants', 'eventType'].includes(key)) continue;
+
+            // 尋找對應的輸入框
+            const element = form.querySelector(`[name="${key}"], [name="iot_${key}"], [name="dt_${key}"]`);
+            if (element) {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    const values = String(eventData[key]).split(',').map(s => s.trim());
+                    if (values.includes(element.value)) element.checked = true;
+                } else {
+                    element.value = eventData[key] || '';
+                }
+            }
+        }
+    }, 300); // 稍微延遲確保 DOM 載入與清理完畢
 }
 
-// 根據 ID 獲取並渲染客戶聯絡人
-async function _fetchAndPopulateClientParticipants(opportunityId, companyId, selectedParticipants = []) {
-    if (!opportunityId && !companyId) {
-        _populateClientParticipantsCheckboxes([], selectedParticipants);
-        return;
-    }
-
+// 獲取並渲染客戶人員 (編輯用)
+async function _fetchAndPopulateClientParticipantsForEdit(opportunityId, companyId, currentList = []) {
     let contacts = [];
     try {
         if (opportunityId) {
@@ -233,271 +283,124 @@ async function _fetchAndPopulateClientParticipants(opportunityId, companyId, sel
                  contacts = result.success ? result.data.contacts : [];
             }
         }
-    } catch (error) {
-        console.error('獲取客戶聯絡人失敗:', error);
-    }
-    _populateClientParticipantsCheckboxes(contacts, selectedParticipants);
+    } catch (error) { console.error(error); }
+
+    // 分離手動輸入
+    const contactNames = new Set(contacts.map(c => c.name));
+    const contactDisplayNames = new Set(contacts.map(c => c.position ? `${c.name} (${c.position})` : c.name));
+    
+    const manualList = [];
+    currentList.forEach(p => {
+        if (contactDisplayNames.has(p) || contactNames.has(p)) {
+            selectedEditClientParticipants.add(p);
+        } else {
+            manualList.push(p);
+        }
+    });
+
+    _renderEditParticipants('client', 'edit-client-participants-container', contacts, selectedEditClientParticipants);
+    document.getElementById('edit-manual-participants').value = manualList.join(', ');
 }
 
-// 渲染客戶與會人員 Checkbox
-function _populateClientParticipantsCheckboxes(contacts = [], selectedParticipants = []) {
-    const container = document.getElementById('client-participants-container');
+// 渲染人員膠囊標籤
+function _renderEditParticipants(type, containerId, list, selectedSet) {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
-    const selectedSet = new Set(selectedParticipants);
-    
-    let checkboxesHTML = '';
-    if (contacts.length > 0) {
-        checkboxesHTML = contacts.map(contact => {
-            // 【重要修正】自動組合 姓名 + 職稱 作為 value
-            // 這樣儲存時就會是 "王小明 (經理)" 而不僅是 "王小明"
-            const displayName = contact.position 
-                ? `${contact.name} (${contact.position})` 
-                : contact.name;
-            
-            // 判斷是否被選中：先比對全名，若不符合則嘗試比對純姓名 (相容舊資料)
-            let isChecked = selectedSet.has(displayName);
-            if (!isChecked && selectedSet.has(contact.name)) {
-                isChecked = true;
-            }
+    if (list.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted)">無資料</span>';
+        return;
+    }
 
-            return `
-            <label>
-                <input type="checkbox" name="clientParticipants-checkbox" value="${displayName}" ${isChecked ? 'checked' : ''}>
-                <span>${displayName}</span>
-            </label>
-            `;
-        }).join('');
+    container.innerHTML = list.map(item => {
+        let value, label;
+        if (typeof item === 'string') {
+            value = label = item;
+        } else if (item.note) { // 團隊成員
+            value = label = item.note;
+        } else { // 聯絡人
+            value = item.position ? `${item.name} (${item.position})` : item.name;
+            label = value;
+        }
+        
+        const isSelected = selectedSet.has(value);
+        return `<span class="participant-pill-tag ${isSelected ? 'selected' : ''}" 
+                      onclick="toggleEditParticipant('${type}', '${value}', this)">
+                      ${label}
+                </span>`;
+    }).join('');
+}
+
+// 切換人員選取狀態
+function toggleEditParticipant(type, value, el) {
+    const set = type === 'our' ? selectedEditOurParticipants : selectedEditClientParticipants;
+    if (set.has(value)) {
+        set.delete(value);
+        el.classList.remove('selected');
     } else {
-        checkboxesHTML = '<p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">此對象尚無已建檔的關聯聯絡人。</p>';
-    }
-
-    // 過濾出不在選單內的「其他」人員
-    // 這裡的邏輯比較簡單：如果 selectedParticipants 裡的字串，在通訊錄裡找不到 match，就當作是手動輸入的
-    // 注意：比對時要考慮 displayName
-    const contactDisplayNames = new Set(contacts.map(c => c.position ? `${c.name} (${c.position})` : c.name));
-    // 也要考慮舊格式 (純姓名)
-    const contactRawNames = new Set(contacts.map(c => c.name));
-
-    const otherParticipants = selectedParticipants.filter(p => {
-        const pTrim = p.trim();
-        return pTrim && !contactDisplayNames.has(pTrim) && !contactRawNames.has(pTrim);
-    }).join(', ');
-
-    container.innerHTML = `
-        <div class="participants-checkbox-group">${checkboxesHTML}</div>
-        <input type="text" name="clientParticipants-other" class="form-input other-participant-input" placeholder="其他與會人員 (若無關聯資料，請在此手動輸入，用逗號分隔)" value="${otherParticipants}">
-    `;
-}
-
-// 搜尋處理
-function handleOpportunitySearchForEvent(event) {
-    clearTimeout(eventOppSearchTimeout);
-    eventOppSearchTimeout = setTimeout(async () => {
-        const query = event.target.value;
-        const resultsContainer = document.getElementById('event-log-opportunity-results');
-        if (query.length < 1) { resultsContainer.innerHTML = ''; return; }
-        resultsContainer.innerHTML = '<div class="loading show"><div class="spinner" style="width: 20px; height: 20px;"></div></div>';
-        try {
-            const opportunities = await authedFetch(`/api/opportunities?q=${encodeURIComponent(query)}&page=0`);
-            const list = Array.isArray(opportunities) ? opportunities : (opportunities.data || []);
-            
-            resultsContainer.innerHTML = (list && list.length > 0)
-                ? list.map(opp => `<div class="search-result-item" onclick='selectOpportunityForEvent(${JSON.stringify(opp).replace(/'/g, "&apos;")})'><strong>${opp.opportunityName}</strong><br><small>${opp.customerCompany}</small></div>`).join('')
-                : '<div class="search-result-item">找不到符合的機會</div>';
-        } catch(e) { 
-            if (e.message !== 'Unauthorized') resultsContainer.innerHTML = '<div class="alert alert-error">搜尋失敗</div>';
-        }
-    }, 400);
-}
-
-async function selectOpportunityForEvent(opp) {
-    document.getElementById('event-log-opportunityId').value = opp.opportunityId;
-    document.getElementById('event-log-companyId').value = ''; 
-    const selectorContainer = document.getElementById('event-log-entity-selector');
-    selectorContainer.innerHTML = `
-        <label class="form-label">已選擇關聯機會</label>
-        <div class="selected-item-display">
-            <span>${opp.opportunityName}</span>
-            <button type="button" class="action-btn small secondary" onclick="resetEntitySelectorForEvent()">更改</button>
-        </div>
-    `;
-    await _fetchAndPopulateClientParticipants(opp.opportunityId, null);
-}
-
-function handleCompanySearchForEvent(event) {
-    clearTimeout(eventCompanySearchTimeout);
-    eventCompanySearchTimeout = setTimeout(async () => {
-        const query = event.target.value;
-        const resultsContainer = document.getElementById('event-log-company-results');
-        if (query.length < 1) { resultsContainer.innerHTML = ''; return; }
-        resultsContainer.innerHTML = '<div class="loading show"><div class="spinner" style="width: 20px; height: 20px;"></div></div>';
-        try {
-            const result = await authedFetch(`/api/companies`);
-            const list = Array.isArray(result) ? result : (result.data || []);
-            const companies = list.filter(c => c.companyName.toLowerCase().includes(query.toLowerCase()));
-            
-            resultsContainer.innerHTML = (companies.length > 0)
-                ? companies.map(comp => `<div class="search-result-item" onclick='selectCompanyForEvent(${JSON.stringify(comp).replace(/'/g, "&apos;")})'><strong>${comp.companyName}</strong></div>`).join('')
-                : '<div class="search-result-item">找不到符合的公司</div>';
-        } catch(e) { 
-            if (e.message !== 'Unauthorized') resultsContainer.innerHTML = '<div class="alert alert-error">搜尋失敗</div>';
-        }
-    }, 400);
-}
-
-async function selectCompanyForEvent(comp) {
-    document.getElementById('event-log-companyId').value = comp.companyId;
-    document.getElementById('event-log-opportunityId').value = '';
-    const selectorContainer = document.getElementById('event-log-entity-selector');
-    selectorContainer.innerHTML = `
-        <label class="form-label">已選擇關聯公司</label>
-        <div class="selected-item-display">
-            <span>${comp.companyName}</span>
-            <button type="button" class="action-btn small secondary" onclick="resetEntitySelectorForEvent()">更改</button>
-        </div>
-    `;
-    await _fetchAndPopulateClientParticipants(null, comp.companyId);
-}
-
-function resetEntitySelectorForEvent() {
-    document.getElementById('event-log-opportunityId').value = '';
-    document.getElementById('event-log-companyId').value = '';
-    toggleEventLinkType();
-}
-
-// 填充表單資料 (編輯模式用)
-async function populateEventLogForm(eventData) {
-    document.getElementById('event-log-eventId').value = eventData.eventId;
-    
-    if (eventData.opportunityId) {
-        document.getElementById('event-log-opportunityId').value = eventData.opportunityId;
-    } else if (eventData.companyId) {
-        document.getElementById('event-log-companyId').value = eventData.companyId;
-    }
-    
-    const eventType = eventData.eventType || 'general';
-    const typeToSelect = eventType === 'legacy' ? 'iot' : eventType;
-    const typeRadio = document.querySelector(`input[name="eventType"][value="${typeToSelect}"]`);
-    if (typeRadio) typeRadio.checked = true;
-    
-    document.getElementById('event-log-type').value = eventType;
-
-    await loadEventTypeForm(typeToSelect);
-    
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    const ourParticipants = (eventData.ourParticipants || '').split(',').map(p => p.trim()).filter(Boolean);
-    _populateOurParticipantsCheckboxes(ourParticipants);
-    
-    const clientParticipants = (eventData.clientParticipants || '').split(',').map(p => p.trim()).filter(Boolean);
-    await _fetchAndPopulateClientParticipants(eventData.opportunityId, eventData.companyId, clientParticipants);
-
-    const form = document.getElementById('event-log-form');
-    for (const key in eventData) {
-        if (!['ourParticipants', 'clientParticipants'].includes(key)) {
-            const elements = form.querySelectorAll(`[name="${key}"], [name="iot_${key}"], [name="dt_${key}"]`);
-            if (elements.length > 0) {
-                if (elements[0].type === 'checkbox' || elements[0].type === 'radio') {
-                    const values = String(eventData[key]).split(',').map(s => s.trim());
-                    elements.forEach(cb => { if (values.includes(cb.value)) cb.checked = true; });
-                } else {
-                    elements[0].value = eventData[key] || '';
-                }
-            }
-        }
-    }
-    
-    // 管理員功能：覆寫建立時間
-    const createdTimeGroup = document.getElementById('admin-created-time-group');
-    const createdTimeInput = document.getElementById('event-log-createdTime');
-    if (createdTimeGroup && createdTimeInput && eventData.createdTime) {
-        try {
-            const date = new Date(eventData.createdTime);
-            const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-            createdTimeInput.value = localDateTime;
-            createdTimeGroup.style.display = 'block'; 
-        } catch (e) {
-            console.warn("無法解析建立時間:", eventData.createdTime, e);
-            createdTimeGroup.style.display = 'none';
-        }
+        set.add(value);
+        el.classList.add('selected');
     }
 }
 
-// 表單提交處理 (編輯模式)
+// 表單提交
 async function handleEventFormSubmit(e) {
     e.preventDefault();
-    
     const eventId = document.getElementById('event-log-eventId').value;
-    const isEditMode = !!eventId;
-
-    showLoading(isEditMode ? '正在更新...' : '正在儲存...');
+    const form = e.target;
+    
+    showLoading('正在更新...');
 
     try {
-        const form = document.getElementById('event-log-form');
-        if (!isEditMode && !form.opportunityId.value && !form.companyId.value) {
-            throw new Error('請先選擇一個關聯的機會案件或公司');
-        }
-
-        const commonData = _getCommonFieldData(form);
-        const eventData = { ...commonData };
-        
         const formData = new FormData(form);
-
-        const createdTimeInput = document.getElementById('admin-created-time-group');
-        if (isEditMode && createdTimeInput && createdTimeInput.style.display !== 'none' && form.createdTime.value) {
-            try {
-                const localDate = new Date(form.createdTime.value);
-                if (!isNaN(localDate.getTime())) {
-                    eventData.createdTime = localDate.toISOString();
-                }
-            } catch (e) {
-                console.warn("無法解析覆寫的建立時間:", form.createdTime.value);
-            }
-        }
-
+        const eventData = {};
+        
         for (let [key, value] of formData.entries()) {
-            if (key === 'createdTime' && eventData.hasOwnProperty('createdTime')) {
-                continue;
-            }
-            if (!eventData.hasOwnProperty(key) && !key.startsWith('clientParticipants-')) {
-                 const allValues = formData.getAll(key);
-                 eventData[key] = allValues.length > 1 ? allValues.join(', ') : allValues[0];
-            }
+            if (!eventData[key]) eventData[key] = value;
         }
         
-        eventData.eventType = form.querySelector('input[name="eventType"]:checked').value;
-        if(!isEditMode) {
-            eventData.creator = getCurrentUser();
-            if (formData.has('createdTime') && formData.get('createdTime')) {
-                 try {
-                    const localDate = new Date(formData.get('createdTime'));
-                    if (!isNaN(localDate.getTime())) {
-                        eventData.createdTime = localDate.toISOString();
-                    }
-                 } catch(e) { /* 忽略 */ }
-            }
-        }
-        
-        const url = isEditMode ? `/api/events/${eventId}` : '/api/events';
-        const method = isEditMode ? 'PUT' : 'POST';
+        // 處理人員
+        eventData.ourParticipants = Array.from(selectedEditOurParticipants).join(', ');
+        const manualClient = document.getElementById('edit-manual-participants').value.trim();
+        const clientList = Array.from(selectedEditClientParticipants);
+        if (manualClient) clientList.push(...manualClient.split(',').map(s => s.trim()));
+        eventData.clientParticipants = clientList.filter(Boolean).join(', ');
 
-        const result = await authedFetch(url, { method, body: JSON.stringify(eventData) });
+        // 處理時間
+        if (form.createdTime && form.createdTime.value) {
+            eventData.createdTime = new Date(form.createdTime.value).toISOString();
+        }
+
+        // 處理 Checkbox (多選)
+        const checkboxes = form.querySelectorAll('input[type="checkbox"][name]:checked');
+        const multiVal = {};
+        checkboxes.forEach(cb => {
+            if(!multiVal[cb.name]) multiVal[cb.name] = [];
+            multiVal[cb.name].push(cb.value);
+        });
+        for (let k in multiVal) {
+            eventData[k] = multiVal[k].join(', ');
+        }
         
+        const result = await authedFetch(`/api/events/${eventId}`, {
+            method: 'PUT',
+            body: JSON.stringify(eventData)
+        });
+
         if (result.success) {
             closeModal('event-log-modal');
         } else {
-            throw new Error(result.details || '操作失敗');
+            throw new Error(result.details || '更新失敗');
         }
+
     } catch (error) {
-        if (error.message !== 'Unauthorized') {
-            showNotification(`操作失敗: ${error.message}`, 'error');
-        }
+        if (error.message !== 'Unauthorized') showNotification(`更新失敗: ${error.message}`, 'error');
     } finally {
         hideLoading();
     }
 }
 
+// 綁定
 document.addEventListener('submit', function(e) {
     if (e.target.id === 'event-log-form') {
         handleEventFormSubmit(e);
