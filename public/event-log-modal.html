@@ -5,7 +5,6 @@
         max-width: 1400px;
     }
     
-    /* 【最終修正】將按鈕群組化，並確保其在同一行 */
     #event-log-modal .modal-header {
         display: flex;
         justify-content: space-between;
@@ -21,7 +20,7 @@
         padding: var(--spacing-2) var(--spacing-4);
         font-size: var(--font-size-sm);
         height: auto;
-        margin-bottom: 0; /* 覆蓋可能存在的 margin */
+        margin-bottom: 0; 
     }
      #event-log-modal .modal-header .action-buttons .close-btn {
         width: auto;
@@ -167,12 +166,209 @@
         }
     }
 
+    /* --- 【新增】Wizard 專屬樣式 --- */
+    #new-event-wizard-modal .modal-content {
+        max-width: 900px;
+    }
+    /* 引用現有 Wizard 樣式 */
+    .wizard-steps {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 0 20px;
+    }
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+        color: var(--text-muted);
+        font-weight: 500;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+    }
+    .step-item.active {
+        color: var(--accent-blue);
+        opacity: 1;
+    }
+    .step-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: var(--card-bg);
+        border: 2px solid var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+    .step-item.active .step-circle {
+        border-color: var(--accent-blue);
+        background-color: var(--accent-blue);
+        color: white;
+        box-shadow: 0 0 10px rgba(96, 165, 250, 0.4);
+    }
+    .step-label {
+        font-size: 0.9rem;
+    }
+    .step-line {
+        flex-grow: 1;
+        height: 2px;
+        background-color: var(--border-color);
+        margin: 0 15px;
+        margin-bottom: 20px; /* 對齊圓圈 */
+    }
+
+    /* Entry Options for Event */
+    .event-entry-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 10px;
+    }
+    .event-entry-card {
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        border-radius: var(--rounded-lg);
+        padding: 30px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .event-entry-card:hover {
+        border-color: var(--accent-blue);
+        background: var(--glass-bg);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+    .event-entry-card.selected {
+        border-color: var(--accent-blue);
+        background: color-mix(in srgb, var(--accent-blue) 10%, var(--card-bg));
+    }
+
+    /* Type Grid (Modified: 4 Columns, Vertical Card) */
+    .type-entry-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 改為 4 欄 */
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    /* 在小螢幕上自動切換為 2 欄，避免太擠 */
+    @media (max-width: 768px) {
+        .type-entry-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .type-card {
+        background: var(--secondary-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px 10px; /* 增加上下 padding */
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column; /* 改為垂直排列 */
+        align-items: center;
+        text-align: center;
+        gap: 12px;
+        height: 100%; /* 確保高度一致 */
+    }
+    .type-card:hover {
+        background: var(--glass-bg);
+        border-color: var(--accent-blue);
+        transform: translateY(-2px);
+    }
+    .type-card.selected {
+        background: color-mix(in srgb, var(--accent-blue) 10%, var(--secondary-bg));
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 1px var(--accent-blue);
+    }
+    .type-icon {
+        font-size: 1.5rem;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-bg);
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-bottom: 5px; /* 增加圖示下方間距 */
+    }
+    .type-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .type-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .type-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+
+
+    .tag-selection-area {
+        background: var(--glass-bg);
+        border: 1px solid var(--border-color);
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .tag-group-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+        display: block;
+    }
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .wiz-tag {
+        padding: 6px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background-color: var(--secondary-bg);
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+    }
+    .wiz-tag:hover {
+        border-color: var(--accent-blue);
+    }
+    .wiz-tag.selected {
+        background-color: var(--accent-blue);
+        color: white;
+        border-color: var(--accent-blue);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
 </style>
 
 <div id="event-log-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title" id="event-log-modal-title">📝 新增事件紀錄</h2>
+            <h2 class="modal-title" id="event-log-modal-title">✏️ 編輯事件紀錄</h2>
             <div class="action-buttons">
                 <button class="close-btn" onclick="closeModal('event-log-modal')">&times;</button>
             </div>
@@ -184,21 +380,19 @@
             <input type="hidden" id="event-log-companyId" name="companyId">
             <input type="hidden" id="event-log-type" name="originalEventType">
 
-            <div class="form-step-group" id="event-link-section">
-                <label class="form-step-label"><span class="step-number">1</span> 關聯對象 *</label>
-                <div class="segmented-control" id="event-log-link-type" style="margin-bottom: 1rem;">
+            <div class="form-step-group" id="event-link-section" style="display: none;">
+                 <label class="form-step-label"><span class="step-number">1</span> 關聯對象</label>
+                 <div class="segmented-control">
                     <input type="radio" name="linkType" value="opportunity" id="link-opp" onchange="toggleEventLinkType()">
                     <label for="link-opp">機會案件</label>
-                    
                     <input type="radio" name="linkType" value="company" id="link-comp" onchange="toggleEventLinkType()">
                     <label for="link-comp">公司總覽</label>
                 </div>
-                <div id="event-log-entity-selector" class="form-group">
-                </div>
+                <div id="event-log-entity-selector" class="form-group"></div>
             </div>
 
             <div class="form-step-group">
-                <label class="form-step-label"><span class="step-number">2</span> 事件類型 *</label>
+                <label class="form-step-label"><span class="step-number">1</span> 事件類型</label>
                 <div class="segmented-control">
                     <input type="radio" name="eventType" value="general" id="type-general" onchange="loadEventTypeForm(this.value)" checked>
                     <label for="type-general">一般</label>
@@ -215,12 +409,10 @@
             </div>
 
             <div class="form-step-group">
-                <label class="form-step-label"><span class="step-number">3</span> 詳細內容</label>
-                
+                <label class="form-step-label"><span class="step-number">2</span> 詳細內容</label>
                 <div class="form-group" id="admin-created-time-group" style="display: none; background: color-mix(in srgb, var(--accent-red) 10%, var(--primary-bg)); padding: var(--spacing-4); border-radius: var(--rounded-lg); border: 1px solid var(--accent-red); margin-bottom: var(--spacing-5);">
                     <label for="event-log-createdTime" class="form-label">⚠️ (管理員) 覆寫建立時間</label>
                     <input type="datetime-local" class="form-input" id="event-log-createdTime" name="createdTime">
-                    <small style="color: var(--text-muted); margin-top: var(--spacing-2); display: block;">僅在編輯模式下有效。請謹慎使用，這會影響資料排序。</small>
                 </div>
                 <div id="event-form-container">
                     </div>
@@ -228,8 +420,141 @@
 
             <div class="btn-group">
                 <button type="button" class="action-btn danger" id="event-log-delete-btn" style="display: none; margin-right: auto;">🗑️ 刪除</button>
+                <button type="submit" class="action-btn primary" id="event-log-submit-btn">💾 儲存變更</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="new-event-wizard-modal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title">📝 新增事件紀錄</h2>
+            <button class="close-btn" onclick="closeModal('new-event-wizard-modal')">&times;</button>
+        </div>
+
+        <div class="wizard-steps">
+            <div class="step-item active" data-wiz-step="1">
+                <div class="step-circle">1</div>
+                <div class="step-label">鎖定對象</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" data-wiz-step="2">
+                <div class="step-circle">2</div>
+                <div class="step-label">定義事件</div>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-item" data-wiz-step="3">
+                <div class="step-circle">3</div>
+                <div class="step-label">與會人員</div>
+            </div>
+        </div>
+
+        <form id="event-wizard-form" onsubmit="return false;">
+            <div class="wizard-step-content" data-wiz-content="1">
+                <h3 class="step-instruction">請問這個事件的關聯對象是？</h3>
                 
-                <button type="submit" class="action-btn primary" id="event-log-submit-btn">💾 儲存</button>
+                <div class="event-entry-grid">
+                    <div class="event-entry-card" onclick="EventWizard.selectTargetType('opportunity', this)">
+                        <div class="entry-icon" style="width: 60px; height: 60px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center;">🎯</div>
+                        <div class="entry-title">機會案件</div>
+                        <div class="entry-desc">特定合作或訂單，<br>有明確議題與銷售階段</div>
+                    </div>
+                    <div class="event-entry-card" onclick="EventWizard.selectTargetType('company', this)">
+                        <div class="entry-icon" style="width: 60px; height: 60px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center;">🏢</div>
+                        <div class="entry-title">公司總覽</div>
+                        <div class="entry-desc">例行拜訪、SI/代理商商談，<br>無特定機會背景</div>
+                    </div>
+                </div>
+
+                <div id="wiz-target-search-area" style="margin-top: 20px; display: none;">
+                     <div class="form-group">
+                        <label class="form-label" id="wiz-search-label">搜尋名稱</label>
+                        <div class="search-input-wrapper">
+                            <input type="text" class="form-input" id="wiz-target-search" placeholder="點擊輸入搜尋，或直接從下方選擇..." onkeyup="EventWizard.searchTargets(this.value)" onclick="EventWizard.searchTargets(this.value)">
+                        </div>
+                        <div id="wiz-target-results" class="search-result-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-step-content" data-wiz-content="2" style="display: none;">
+                
+                <div class="type-entry-grid">
+                    <div class="type-card selected" onclick="EventWizard.selectEventType('general', this)">
+                        <div class="type-icon">📝</div>
+                        <div class="type-info">
+                            <div class="type-title">一般紀錄</div>
+                            <div class="type-desc">例行拜訪、尚未確定主題</div>
+                        </div>
+                    </div>
+                    <div class="type-card" onclick="EventWizard.selectEventType('iot', this)">
+                        <div class="type-icon">🏭</div>
+                        <div class="type-info">
+                            <div class="type-title">智慧製造 (IoT)</div>
+                            <div class="type-desc">設備聯網、生產線監控</div>
+                        </div>
+                    </div>
+                    <div class="type-card" onclick="EventWizard.selectEventType('dt', this)">
+                        <div class="type-icon">📊</div>
+                        <div class="type-info">
+                            <div class="type-title">加工應用 (DT)</div>
+                            <div class="type-desc">參數優化、異常分析</div>
+                        </div>
+                    </div>
+                    <div class="type-card" onclick="EventWizard.selectEventType('dx', this)">
+                        <div class="type-icon">🚀</div>
+                        <div class="type-info">
+                            <div class="type-title">數位轉型 (DX)</div>
+                            <div class="type-desc">創新商模、跨系統整合</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                     <div class="form-group">
+                        <label class="form-label">事件名稱 *</label>
+                        <input type="text" class="form-input" id="wiz-event-name" placeholder="例如：需求訪談、產品簡報...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">發生時間 *</label>
+                        <input type="datetime-local" class="form-input" id="wiz-event-time">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">會議地點</label>
+                    <input type="text" class="form-input" id="wiz-event-location" placeholder="例如：客戶會議室、Teams線上...">
+                </div>
+            </div>
+
+            <div class="wizard-step-content" data-wiz-content="3" style="display: none;">
+                <h3 class="step-instruction">請問有哪些人參與？</h3>
+                
+                <div class="tag-selection-area">
+                    <span class="tag-group-label">我方人員 (點擊選取)</span>
+                    <div class="tags-container" id="wiz-our-participants">
+                        <span style="color: var(--text-muted);">載入中...</span>
+                    </div>
+                </div>
+
+                <div class="tag-selection-area">
+                    <span class="tag-group-label">客戶人員 (點擊選取)</span>
+                    <div class="tags-container" id="wiz-client-participants">
+                        <span style="color: var(--text-muted);">請先鎖定對象以載入聯絡人</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <input type="text" class="form-input" id="wiz-manual-participants" placeholder="手動輸入其他與會者 (用逗號分隔)">
+                </div>
+            </div>
+
+            <div class="wizard-footer">
+                <button type="button" class="action-btn secondary" id="wiz-prev-btn" onclick="EventWizard.prevStep()" style="display: none;">&lt; 上一步</button>
+                <span style="flex-grow: 1;"></span>
+                <button type="button" class="action-btn primary" id="wiz-next-btn" onclick="EventWizard.nextStep()">下一步 &gt;</button>
+                <button type="button" class="action-btn primary" id="wiz-create-btn" onclick="EventWizard.create()" style="display: none;">✅ 建立並編輯詳情</button>
             </div>
         </form>
     </div>
