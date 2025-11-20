@@ -1,5 +1,6 @@
 // public/scripts/event-wizard.js
 // 職責：管理「新增事件精靈」的完整流程 (Step 1 -> 2 -> 3 -> Create)
+// 修改歷程：加入機會自動跳轉 Step 2 與公司事件防呆機制
 
 const EventWizard = (() => {
     // 狀態儲存
@@ -28,23 +29,29 @@ const EventWizard = (() => {
         // 1. 強制重置狀態 (Clean Slate)
         resetState();
 
-        // 2. 如果有預設值 (從外部按鈕進入)，則設定狀態
+        // 2. 根據傳入的預設值設定狀態與起始步驟
         if (defaults.opportunityId) {
+            // 情境 A：從機會詳細頁進入
             selectTargetType('opportunity');
             _setTarget({
                 id: defaults.opportunityId,
                 name: defaults.opportunityName,
                 company: defaults.customerCompany
             });
+            // 【修改點】機會直接進入 Step 2 (定義事件)
+            setStep(2); 
         } else if (defaults.companyId) {
+            // 情境 B：從公司詳細頁進入
             selectTargetType('company');
             _setTarget({
                 id: defaults.companyId,
                 name: defaults.companyName,
                 company: defaults.companyName 
             });
+            // 【修改點】公司停留在 Step 1，以便觸發防呆
+            setStep(1);
         } else {
-            // 若無預設值，停在第一步，清空選擇
+            // 情境 C：一般入口 (儀表板/列表)，停在 Step 1
             setStep(1);
         }
         
@@ -127,12 +134,27 @@ const EventWizard = (() => {
     }
 
     function nextStep() {
+        // --- Step 1 驗證與防呆 ---
         if (state.step === 1) {
             if (!state.targetId) {
                 showNotification('請先選擇關聯對象', 'warning');
                 return;
             }
-        } else if (state.step === 2) {
+
+            // 【修改點】公司事件防呆機制
+            if (state.targetType === 'company') {
+                const message = `請確認您是在跟公司互動？\n\n此操作只會紀錄於「公司總覽」，\n(通常用於 SI、代理商或 MTB 的一般拜訪)，\n並「不會」存檔在任何機會案件中。\n\n確定要繼續嗎？`;
+                
+                showConfirmDialog(message, () => {
+                    // 使用者確認後，才進入下一步
+                    setStep(2);
+                });
+                return; // 阻斷，等待確認
+            }
+        } 
+        
+        // --- Step 2 驗證 ---
+        if (state.step === 2) {
             const name = document.getElementById('wiz-event-name').value.trim();
             const time = document.getElementById('wiz-event-time').value;
             if (!name || !time) {
@@ -144,6 +166,8 @@ const EventWizard = (() => {
             state.eventTime = time;
             state.eventLocation = document.getElementById('wiz-event-location').value.trim();
         }
+        
+        // 正常跳轉 (Step 1 機會 -> 2, 或 Step 2 -> 3)
         setStep(state.step + 1);
     }
 
@@ -356,7 +380,7 @@ const EventWizard = (() => {
                 // 1. 關閉 Wizard
                 closeModal('new-event-wizard-modal');
                 
-                // 2. 準備通知內容 (增強版)
+                // 2. 準備通知內容
                 const typeMap = {
                     'general': '一般',
                     'iot': 'IoT',

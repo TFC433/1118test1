@@ -250,8 +250,18 @@
 
 /* ==================== 確認對話框 ==================== */
 #confirm-dialog .modal-content { max-width: 500px; text-align: center; }
-#confirm-message { padding: var(--spacing-6); font-size: var(--font-size-lg); color: var(--text-secondary); line-height: 1.6; font-weight: 500; }
 
+/* 修改這一段 */
+#confirm-message { 
+    padding: var(--spacing-6); 
+    font-size: var(--font-size-lg); 
+    color: var(--text-secondary); 
+    line-height: 1.6; 
+    font-weight: 500;
+    
+    /* 加入這一行：讓 \n 符號能正確換行 */
+    white-space: pre-wrap; 
+}
 /* ==================== 響應式設計 ==================== */
 @media (max-width: 768px) {
     .modal-content { width: 95%; margin: 5% auto; padding: var(--spacing-6); max-height: 85vh; }
