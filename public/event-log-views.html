@@ -20,233 +20,179 @@
 }
 .report-view { 
     padding: 10px; 
-    background-color: var(--primary-bg); /* 報告內頁背景，這會跟隨主題變化 */
+    background-color: var(--primary-bg);
 }
 
-#event-log-report-modal .modal-header .action-buttons {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-}
-#event-log-report-modal .modal-header .action-buttons .action-btn,
-#event-log-report-modal .modal-header .action-buttons .close-btn {
-    padding: var(--spacing-2) var(--spacing-4);
-    font-size: var(--font-size-sm);
-    height: auto;
-    margin-bottom: 0;
-}
-#event-log-report-modal .modal-header .action-buttons .close-btn {
-    width: auto;
-}
-
-
-/* ================== 報告樣式 (最終版 v2) ================== */
-
-/* --- 報告標頭區 (硬編碼為深色主題) --- */
+/* --- 1. 標頭區 (動態色 + 不換行按鈕) --- */
 .report-header {
-    background: var(--accent-purple); /* 【修改】背景改為系統紫色 */
-    color: #cbd5e1;  /* 預設文字改為淺灰 */
+    /* 預設背景 */
+    --header-color: var(--accent-purple); 
+    background: color-mix(in srgb, var(--header-color) 15%, var(--primary-bg));
+    border: 1px solid color-mix(in srgb, var(--header-color) 30%, var(--border-color));
     padding: 20px 25px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    border: 1px solid var(--border-color); /* 【修改】邊框改為標準邊框色 */
-}
-
-.header-main-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
-    margin-bottom: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
 }
 
 .report-title {
     font-size: 1.6rem;
-    font-weight: 600;
-    color: #f1f5f9; /* 標題文字改為高對比的白色 */
+    font-weight: 700;
+    color: var(--text-primary);
     line-height: 1.3;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.report-header .card-tag {
+    font-size: 0.9rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    vertical-align: middle;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .header-meta-info {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
-    color: #cbd5e1; /* 中繼資料文字改為淺灰色 */
-    border-top: 1px solid rgba(255, 255, 255, 0.2); /* 【修改】邊框改為半透明白 */
-    padding-top: 10px;
-    margin-top: 15px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    border-top: 1px solid color-mix(in srgb, var(--header-color) 20%, var(--border-color));
+    padding-top: 12px;
 }
 
-/* 確保 strong 標籤也繼承淺色 */
-.header-meta-info span strong {
-    color: #f1f5f9; /* 硬編碼為白色 */
-}
-
-/* --- 標頭區的亮燈選項與標籤 --- */
-.header-labeled-options {
+/* 強制按鈕不換行 */
+#event-log-report-modal .modal-header .action-buttons {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-}
-.header-options-label {
-    font-weight: 600;
-    color: #cbd5e1; /* 標籤文字改為淺灰色 */
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-.header-options-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.header-option {
-    padding: 4px 10px;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    background-color: rgba(0, 0, 0, 0.15); /* 【修改】使用半透明黑 */
-    color: #f1f5f9; /* 【修改】文字改為淺色 */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* 【修改】使用半透明白邊框 */
-}
-/* "下單機率" 亮燈效果更新為綠色系 */
-.header-option.selected {
-    background-color: rgba(74, 222, 128, 0.2); /* 使用淺綠色 */
-    color: #4ade80;      /* 使用亮綠色 */
-    border-color: #4ade80;   /* 使用亮綠色 */
-    font-weight: 600;
+    gap: var(--spacing-2);
+    flex-wrap: nowrap; 
+    overflow-x: auto; 
+    padding-bottom: 4px; 
 }
 
-.tag {
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: white;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    cursor: help;
+#event-log-report-modal .modal-header .action-buttons .action-btn {
+    white-space: nowrap; 
+    flex-shrink: 0; 
 }
-.tag-painpoint { background-color: #9b59b6; }
 
-/* --- 報告主體 (兩欄佈局) --- */
+
+/* --- 2. 資訊區塊 (垂直卡片佈局 - 統一底色) --- */
 .report-container {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 20px;
 }
 
-.report-column {
-    flex: 1;
-    min-width: 400px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
 .report-section {
-    background: var(--card-bg); /* 使用 CSS 變數 */
-    border: 1px solid var(--border-color); /* 使用 CSS 變數 */
-    border-radius: 8px;
-    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
 }
 
 .section-title {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--text-primary); /* 使用 CSS 變數 */
-    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color); /* 使用 CSS 變數 */
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
+/* --- 3. 欄位內容 (左標題 + 右模擬輸入框) --- */
 .info-item {
     display: grid;
-    grid-template-columns: 120px 1fr;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--primary-bg); /* 使用 CSS 變數 */
-}
-.info-item:last-child {
-    border-bottom: none;
+    grid-template-columns: 140px 1fr; 
+    gap: 16px;
+    padding: 12px 0;
+    align-items: start; 
 }
 
 .info-label {
     font-weight: 600;
-    color: var(--text-secondary); /* 使用 CSS 變數 */
-    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    padding-top: 10px; 
+    text-align: right;
 }
 
-.info-value {
-    color: var(--text-primary); /* 使用 CSS 變數 */
-    font-size: 0.95rem;
+/* 模擬輸入框樣式 */
+.info-value-box {
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    padding: 10px 12px;
+    border-radius: 8px;
+    min-height: 42px; 
+    height: auto; 
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap; 
+    gap: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
-/* --- 內文 "輸入框" 效果 --- */
-.info-value-box {
-    background-color: var(--primary-bg); /* 使用 CSS 變數 */
-    border: 1px solid var(--border-color); /* 使用 CSS 變數 */
-    padding: 8px 12px;
-    border-radius: 6px;
-    min-height: 38px;
-    display: flex;
-    align-items: center;
-}
-
-.info-value pre {
-    margin: 0;
-    padding: 10px;
-    background-color: var(--primary-bg); /* 使用 CSS 變數 */
-    border-radius: 5px;
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-    border: 1px solid var(--border-color); /* 使用 CSS 變數 */
-}
-
-/* --- 內文 "亮燈/暗燈" 效果 --- */
-.option-group {
+/* --- 4. 人員膠囊 (Pills) --- */
+.participants-wrapper {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
 }
-.option-item {
-    padding: 5px 12px;
-    border-radius: 15px;
-    background-color: var(--primary-bg); /* 使用 CSS 變數 */
-    color: var(--text-muted); /* 使用 CSS 變數 */
-    border: 1px solid var(--border-color); /* 使用 CSS 變數 */
+
+.participant-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
     font-size: 0.9rem;
-}
-.option-item.selected {
-    background-color: color-mix(in srgb, var(--accent-blue) 20%, var(--primary-bg)); /* 使用 CSS 變數 */
-    color: var(--accent-blue); /* 使用 CSS 變數 */
-    border-color: var(--accent-blue); /* 使用 CSS 變數 */
-    font-weight: 600;
+    font-weight: 500;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
 }
 
-/* --- 【修改】PDF 專用樣式 (改用 CSS 斷頁控制) --- */
+/* 我方人員膠囊 */
+.participant-pill.our-side {
+    background-color: color-mix(in srgb, var(--accent-blue) 10%, var(--secondary-bg));
+    border-color: color-mix(in srgb, var(--accent-blue) 30%, var(--border-color));
+    color: var(--accent-blue);
+}
+/* 客戶人員膠囊 (淡綠底) */
+.participant-pill.client-side {
+    background-color: color-mix(in srgb, var(--accent-green) 10%, var(--secondary-bg));
+    border-color: color-mix(in srgb, var(--accent-green) 30%, var(--border-color));
+    color: var(--accent-green);
+}
+
+
+/* --- PDF 列印優化 --- */
 @media print {
-    /* 在實際列印時隱藏按鈕區 */
-    #event-log-report-modal .modal-header > div {
-        display: none;
-    }
-    .report-view, .report-section, .report-header {
+    .report-header, .report-section, .info-value-box {
         box-shadow: none;
-        border: 1px solid #ccc;
+        border: 1px solid #ccc !important;
+        background-color: #fff !important;
+        color: #000 !important;
     }
-
-    /* --- 斷頁控制 --- */
-    .report-header {
-        page-break-after: avoid; /* 避免在標頭後斷頁 */
+    .participant-pill {
+        border: 1px solid #999;
+        background: none !important;
+        color: #000 !important;
     }
-    .report-section {
-        page-break-inside: avoid; /* 盡力避免在區塊中斷頁 */
-        page-break-before: auto; /* 允許在區塊前斷頁 */
-    }
-    .info-item {
-        page-break-inside: avoid !important; /* 強烈避免在 "標籤+內容" 的項目中斷頁 */
+    .modal-header .action-buttons {
+        display: none !important;
     }
 }
 </style>

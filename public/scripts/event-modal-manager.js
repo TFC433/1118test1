@@ -1,5 +1,6 @@
 // views/scripts/event-modal-manager.js
 // 職責：管理所有與「新增/編輯事件」彈出視窗相關的複雜邏輯
+// (版本: 還原舊版 + 修正職稱保存)
 
 let eventOppSearchTimeout;
 let eventCompanySearchTimeout;
@@ -7,23 +8,20 @@ let eventCompanySearchTimeout;
 // 入口函式：決定是開啟「新增精靈」還是「編輯視窗」
 async function showEventLogFormModal(options = {}) {
     // ==================== 【分流邏輯】 ====================
-    // 如果沒有 eventId，代表是「新增模式」，直接轉交給新的 Wizard 處理
     if (!options.eventId) {
         if (window.EventWizard) {
-            // 將可能的預設值 (如 opportunityId, companyId) 傳遞給 Wizard
             EventWizard.show(options);
         } else {
             console.error("EventWizard module not loaded!");
             showNotification("無法開啟新增精靈，請重新整理頁面。", "error");
         }
-        return; // 結束函式，不執行下方的舊有新增邏輯
+        return; 
     }
     // ==================== 【分流結束】 ====================
 
 
     // --- 以下為原本的「編輯模式」邏輯 ---
     
-    // 確保 Modal HTML 已載入
     if (!document.getElementById('event-log-modal')) {
         console.error('Event log modal HTML not loaded!');
         showNotification('無法開啟事件紀錄視窗，元件遺失。', 'error');
@@ -50,10 +48,12 @@ async function showEventLogFormModal(options = {}) {
     // 進入此區塊必定是編輯模式
     title.textContent = '✏️ 編輯事件紀錄';
     submitBtn.textContent = '💾 儲存變更';
-    linkSection.style.display = 'none'; // 編輯時隱藏關聯對象選擇 (已鎖定)
+    linkSection.style.display = 'none'; 
     
-    typeSelectorContainer.style.pointerEvents = 'auto';
-    typeSelectorContainer.style.opacity = '1';
+    if(typeSelectorContainer) {
+        typeSelectorContainer.style.pointerEvents = 'auto';
+        typeSelectorContainer.style.opacity = '1';
+    }
 
     try {
         const result = await authedFetch(`/api/events/${options.eventId}`);
@@ -81,17 +81,14 @@ async function confirmDeleteEvent(eventId, eventName) {
     showConfirmDialog(message, async () => {
         showLoading('正在刪除事件...');
         try {
-            // authedFetch 會自動處理 API 呼叫、成功通知和頁面刷新
             const result = await authedFetch(`/api/events/${eventId}`, {
                 method: 'DELETE'
             });
-            // 成功後 authedFetch 會自動觸發 refreshCurrentView
         } catch (error) {
             if (error.message !== 'Unauthorized') {
                 console.error('刪除事件失敗:', error);
             }
         } finally {
-            // 無論成功或失敗，都必須隱藏 loading 畫面並關閉 Modal
             hideLoading();
             closeModal('event-log-modal');
             closeModal('event-log-report-modal');
@@ -99,7 +96,7 @@ async function confirmDeleteEvent(eventId, eventName) {
     });
 }
 
-// 切換關聯類型 (僅用於舊的新增模式，但為了相容性保留)
+// 切換關聯類型
 function toggleEventLinkType() {
     const linkType = document.querySelector('input[name="linkType"]:checked').value;
     const entitySelector = document.getElementById('event-log-entity-selector');
@@ -248,21 +245,44 @@ function _populateClientParticipantsCheckboxes(contacts = [], selectedParticipan
     if (!container) return;
 
     const selectedSet = new Set(selectedParticipants);
-    const contactNames = new Set(contacts.map(c => c.name));
     
     let checkboxesHTML = '';
     if (contacts.length > 0) {
-        checkboxesHTML = contacts.map(contact => `
+        checkboxesHTML = contacts.map(contact => {
+            // 【重要修正】自動組合 姓名 + 職稱 作為 value
+            // 這樣儲存時就會是 "王小明 (經理)" 而不僅是 "王小明"
+            const displayName = contact.position 
+                ? `${contact.name} (${contact.position})` 
+                : contact.name;
+            
+            // 判斷是否被選中：先比對全名，若不符合則嘗試比對純姓名 (相容舊資料)
+            let isChecked = selectedSet.has(displayName);
+            if (!isChecked && selectedSet.has(contact.name)) {
+                isChecked = true;
+            }
+
+            return `
             <label>
-                <input type="checkbox" name="clientParticipants-checkbox" value="${contact.name}" ${selectedSet.has(contact.name) ? 'checked' : ''}>
-                <span>${contact.name} (${contact.position || 'N/A'})</span>
+                <input type="checkbox" name="clientParticipants-checkbox" value="${displayName}" ${isChecked ? 'checked' : ''}>
+                <span>${displayName}</span>
             </label>
-        `).join('');
+            `;
+        }).join('');
     } else {
         checkboxesHTML = '<p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">此對象尚無已建檔的關聯聯絡人。</p>';
     }
 
-    const otherParticipants = selectedParticipants.filter(p => p && !contactNames.has(p)).join(', ');
+    // 過濾出不在選單內的「其他」人員
+    // 這裡的邏輯比較簡單：如果 selectedParticipants 裡的字串，在通訊錄裡找不到 match，就當作是手動輸入的
+    // 注意：比對時要考慮 displayName
+    const contactDisplayNames = new Set(contacts.map(c => c.position ? `${c.name} (${c.position})` : c.name));
+    // 也要考慮舊格式 (純姓名)
+    const contactRawNames = new Set(contacts.map(c => c.name));
+
+    const otherParticipants = selectedParticipants.filter(p => {
+        const pTrim = p.trim();
+        return pTrim && !contactDisplayNames.has(pTrim) && !contactRawNames.has(pTrim);
+    }).join(', ');
 
     container.innerHTML = `
         <div class="participants-checkbox-group">${checkboxesHTML}</div>
@@ -280,7 +300,6 @@ function handleOpportunitySearchForEvent(event) {
         resultsContainer.innerHTML = '<div class="loading show"><div class="spinner" style="width: 20px; height: 20px;"></div></div>';
         try {
             const opportunities = await authedFetch(`/api/opportunities?q=${encodeURIComponent(query)}&page=0`);
-            // 修正：相容陣列或物件回傳格式
             const list = Array.isArray(opportunities) ? opportunities : (opportunities.data || []);
             
             resultsContainer.innerHTML = (list && list.length > 0)
@@ -315,7 +334,6 @@ function handleCompanySearchForEvent(event) {
         resultsContainer.innerHTML = '<div class="loading show"><div class="spinner" style="width: 20px; height: 20px;"></div></div>';
         try {
             const result = await authedFetch(`/api/companies`);
-            // 修正：相容回傳格式
             const list = Array.isArray(result) ? result : (result.data || []);
             const companies = list.filter(c => c.companyName.toLowerCase().includes(query.toLowerCase()));
             

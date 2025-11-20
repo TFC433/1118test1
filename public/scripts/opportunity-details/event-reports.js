@@ -1,12 +1,13 @@
 // views/scripts/opportunity-details/event-reports.js
 // 職責：專門管理「事件報告」頁籤的 UI 與功能，包含總覽模式
+// (V2 - 修正總覽模式下的職稱顯示：注入聯絡人清單以支援智慧補完)
 
 const OpportunityEvents = (() => {
     // 模組私有變數
     let _eventLogs = [];
-    let _context = {}; // 改為通用的 context 物件
+    let _context = {}; // 通用的 context 物件
 
-    // 動態注入樣式
+    // 動態注入樣式 (保持不變，確保 10% 偏移排版)
     function _injectStyles() {
         const styleId = 'event-reports-dynamic-styles';
         if (document.getElementById(styleId)) return;
@@ -23,19 +24,18 @@ const OpportunityEvents = (() => {
                 overflow: hidden;
             }
 
-            /* 【修正】使用正確的父層 ID 和屬性選擇器來選取動態 ID */
+            /* 左側內縮 10% (保持您要求的排版) */
             #tab-content-events [id^="event-logs-overview-view-"] .report-container,
             #tab-content-company-events [id^="event-logs-overview-view-"] .report-container {
-                padding-left: 10%;  /* 【修改】左側內縮 10% */
-                padding-right: 0; /* 【修改】右側不內縮 */
+                padding-left: 10%; 
+                padding-right: 0; 
             }
         `;
         document.head.appendChild(style);
     }
 
-    // 渲染主視圖（列表模式）
+    // 渲染主視圖（列表模式） - 保持不變
     function _render() {
-        // 根據 context 決定渲染到哪個容器
         const container = _context.opportunityId 
             ? document.getElementById('tab-content-events') 
             : document.getElementById('tab-content-company-events');
@@ -92,12 +92,9 @@ const OpportunityEvents = (() => {
     
     function showAddEventModal() {
         if (_context.opportunityId) {
-            // 【*** 修正：從 _context 獲取名稱 ***】
             const opportunityName = _context.opportunityName ? _context.opportunityName.replace(/'/g, "\\'") : '';
             showEventLogModalByOpp(_context.opportunityId, opportunityName);
         } else if (_context.companyId) {
-             // 【*** 修正：從 _context 獲取名稱 ***】
-             // 呼叫 showEventLogFormModal 並傳入公司情境
              showEventLogFormModal({ 
                 companyId: _context.companyId, 
                 companyName: _context.companyName 
@@ -120,34 +117,44 @@ const OpportunityEvents = (() => {
             toggleBtn.setAttribute('onclick', `OpportunityEvents.toggleOverview(false, '${contextId}')`);
 
             if (typeof renderEventLogReportHTML === 'function') {
+                
+                // 【*** 關鍵修改 ***】
+                // 為了讓總覽模式也能顯示職稱，我們需要先去後端撈取該機會/公司的聯絡人清單
+                let contextContacts = [];
+                try {
+                    if (_context.opportunityId) {
+                        // 如果在機會頁面，撈機會的聯絡人
+                        const res = await authedFetch(`/api/opportunities/${_context.opportunityId}/details`);
+                        if (res.success && res.data) contextContacts = res.data.linkedContacts || [];
+                    } else if (_context.companyName) { 
+                        // 如果在公司頁面，撈公司的聯絡人
+                        const res = await authedFetch(`/api/companies/${encodeURIComponent(_context.companyName)}/details`);
+                        if (res.success && res.data) contextContacts = res.data.contacts || [];
+                    }
+                } catch (e) {
+                    console.warn("[OpportunityEvents] 無法獲取關聯聯絡人 (職稱自動補完將失效)", e);
+                }
+                // 【*** 修改結束 ***】
+
                 if (_eventLogs.length > 0) {
-                    
-                    // --- 【*** 核心修正：在此處注入缺少的名稱 ***】 ---
                     const allReportsHtml = _eventLogs.map(log => {
-                        // 建立一個日誌物件的淺層複製
                         const logWithContext = { ...log };
                         
-                        // 檢查是否為機會情境
+                        // 補上可能缺失的名稱 (雖不影響職稱，但為完整性保留)
                         if (_context.opportunityId) {
-                            // 如果日誌的機會ID與當前頁面ID相符，且日誌本身沒有名稱
                             if (logWithContext.opportunityId === _context.opportunityId && !logWithContext.opportunityName) {
-                                // 從 _context 注入機會名稱
                                 logWithContext.opportunityName = _context.opportunityName;
                             }
-                        } 
-                        // 檢查是否為公司情境
-                        else if (_context.companyId) {
-                             // 如果日誌的公司ID與當前頁面ID相符，且日誌本身沒有名稱
+                        } else if (_context.companyId) {
                             if (logWithContext.companyId === _context.companyId && !logWithContext.companyName) {
-                                // 從 _context 注入公司名稱
                                 logWithContext.companyName = _context.companyName;
                             }
                         }
                         
-                        // 使用補充完畢的 log 物件去渲染
-                        return renderEventLogReportHTML(logWithContext);
+                        // 【*** 關鍵修改：將撈到的 contextContacts 傳進去 ***】
+                        // renderEventLogReportHTML 會利用這份清單去比對名字，自動補上 (職稱)
+                        return renderEventLogReportHTML(logWithContext, contextContacts);
                     }).join('');
-                    // --- 【*** 修正結束 ***】 ---
                     
                     overviewView.innerHTML = allReportsHtml;
                 } else {
@@ -168,20 +175,14 @@ const OpportunityEvents = (() => {
     // 初始化模組
     function init(eventLogs, context) {
         _eventLogs = eventLogs;
-        
-        // 【*** 修正：確保 context 包含所有需要的資訊 ***】
-        // 建立一個唯一的 context ID 以區分不同頁面的元件實例
-        // context 物件現在會包含 { opportunityId, opportunityName } 或 { companyId, companyName }
         _context = { 
             ...context, 
             id: context.opportunityId || context.companyId 
         };
-        
         _injectStyles();
         _render();
     }
 
-    // 返回公開的 API
     return {
         init,
         toggleOverview,
