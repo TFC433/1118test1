@@ -411,7 +411,7 @@
             <div class="form-step-group">
                 <label class="form-step-label"><span class="step-number">2</span> 詳細內容</label>
                 <div class="form-group" id="admin-created-time-group" style="display: none; background: color-mix(in srgb, var(--accent-red) 10%, var(--primary-bg)); padding: var(--spacing-4); border-radius: var(--rounded-lg); border: 1px solid var(--accent-red); margin-bottom: var(--spacing-5);">
-                    <label for="event-log-createdTime" class="form-label">⚠️ (管理員) 覆寫建立時間</label>
+                    <label for="event-log-createdTime" class="form-label">⚠️ (請注意) 覆寫建立時間</label>
                     <input type="datetime-local" class="form-input" id="event-log-createdTime" name="createdTime">
                 </div>
                 <div id="event-form-container">
@@ -458,12 +458,12 @@
                     <div class="event-entry-card" onclick="EventWizard.selectTargetType('opportunity', this)">
                         <div class="entry-icon" style="width: 60px; height: 60px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center;">🎯</div>
                         <div class="entry-title">機會案件</div>
-                        <div class="entry-desc">特定合作或訂單，<br>有明確議題與銷售階段</div>
+                        <div class="entry-desc">代表特定的合作或訂單，<br>如MTU，機會導向的事件紀錄。</div>
                     </div>
                     <div class="event-entry-card" onclick="EventWizard.selectTargetType('company', this)">
                         <div class="entry-icon" style="width: 60px; height: 60px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center;">🏢</div>
                         <div class="entry-title">公司總覽</div>
-                        <div class="entry-desc">例行拜訪、SI/代理商商談，<br>無特定機會背景</div>
+                        <div class="entry-desc">互動中沒有特定的機會背景，<br>如SI、代理商、MTB的商談紀錄</div>
                     </div>
                 </div>
 
@@ -491,22 +491,22 @@
                     <div class="type-card" onclick="EventWizard.selectEventType('iot', this)">
                         <div class="type-icon">🏭</div>
                         <div class="type-info">
-                            <div class="type-title">智慧製造 (IoT)</div>
-                            <div class="type-desc">設備聯網、生產線監控</div>
+                            <div class="type-title">IoT</div>
+                            <div class="type-desc">具有IoT專屬紀錄欄位</div>
                         </div>
                     </div>
                     <div class="type-card" onclick="EventWizard.selectEventType('dt', this)">
                         <div class="type-icon">📊</div>
                         <div class="type-info">
-                            <div class="type-title">加工應用 (DT)</div>
-                            <div class="type-desc">參數優化、異常分析</div>
+                            <div class="type-title">DT</div>
+                            <div class="type-desc">具有DT專屬紀錄欄位</div>
                         </div>
                     </div>
                     <div class="type-card" onclick="EventWizard.selectEventType('dx', this)">
                         <div class="type-icon">🚀</div>
                         <div class="type-info">
-                            <div class="type-title">數位轉型 (DX)</div>
-                            <div class="type-desc">創新商模、跨系統整合</div>
+                            <div class="type-title">DX</div>
+                            <div class="type-desc">具有DX專屬紀錄欄位</div>
                         </div>
                     </div>
                 </div>
