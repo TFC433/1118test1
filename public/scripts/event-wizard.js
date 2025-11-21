@@ -1,6 +1,6 @@
 // public/scripts/event-wizard.js
 // 職責：管理「新增事件精靈」的完整流程 (Step 1 -> 2 -> 3 -> Create)
-// 修改歷程：加入機會自動跳轉 Step 2 與公司事件防呆機制
+// 修改歷程：加入機會自動跳轉、公司防呆、完成後連結至獨立編輯器、新增我方人員手動輸入
 
 const EventWizard = (() => {
     // 狀態儲存
@@ -38,7 +38,7 @@ const EventWizard = (() => {
                 name: defaults.opportunityName,
                 company: defaults.customerCompany
             });
-            // 【修改點】機會直接進入 Step 2 (定義事件)
+            // 機會直接進入 Step 2 (定義事件)
             setStep(2); 
         } else if (defaults.companyId) {
             // 情境 B：從公司詳細頁進入
@@ -48,7 +48,7 @@ const EventWizard = (() => {
                 name: defaults.companyName,
                 company: defaults.companyName 
             });
-            // 【修改點】公司停留在 Step 1，以便觸發防呆
+            // 公司停留在 Step 1，以便觸發防呆
             setStep(1);
         } else {
             // 情境 C：一般入口 (儀表板/列表)，停在 Step 1
@@ -58,7 +58,8 @@ const EventWizard = (() => {
         // 設定預設時間為現在
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('wiz-event-time').value = now.toISOString().slice(0, 16);
+        const timeInput = document.getElementById('wiz-event-time');
+        if (timeInput) timeInput.value = now.toISOString().slice(0, 16);
 
         showModal('new-event-wizard-modal');
     }
@@ -80,12 +81,20 @@ const EventWizard = (() => {
 
         // 重置 UI
         document.querySelectorAll('.event-entry-card').forEach(el => el.classList.remove('selected'));
-        document.getElementById('wiz-target-search-area').style.display = 'none';
-        document.getElementById('wiz-target-search').value = '';
-        document.getElementById('wiz-target-results').style.display = 'none';
+        const searchArea = document.getElementById('wiz-target-search-area');
+        if(searchArea) searchArea.style.display = 'none';
         
-        document.getElementById('wiz-event-name').value = '';
-        document.getElementById('wiz-event-location').value = '';
+        const searchInput = document.getElementById('wiz-target-search');
+        if(searchInput) searchInput.value = '';
+        
+        const results = document.getElementById('wiz-target-results');
+        if(results) results.style.display = 'none';
+        
+        const nameInput = document.getElementById('wiz-event-name');
+        if(nameInput) nameInput.value = '';
+        
+        const locInput = document.getElementById('wiz-event-location');
+        if(locInput) locInput.value = '';
         
         // 重置 Step 2 類型卡片
         document.querySelectorAll('.type-card').forEach(el => el.classList.remove('selected'));
@@ -93,7 +102,13 @@ const EventWizard = (() => {
         const generalCard = document.querySelector('.type-card[onclick*="general"]');
         if(generalCard) generalCard.classList.add('selected');
         
-        document.getElementById('wiz-manual-participants').value = '';
+        // 重置手動輸入框
+        const manualClient = document.getElementById('wiz-manual-participants');
+        if(manualClient) manualClient.value = '';
+
+        // 【新增】重置我方手動輸入框
+        const manualOur = document.getElementById('wiz-manual-our-participants');
+        if(manualOur) manualOur.value = '';
     }
 
     // --- 步驟控制 ---
@@ -117,19 +132,21 @@ const EventWizard = (() => {
         const nextBtn = document.getElementById('wiz-next-btn');
         const createBtn = document.getElementById('wiz-create-btn');
 
-        if (step === 1) {
-            prevBtn.style.display = 'none';
-            nextBtn.style.display = 'block';
-            createBtn.style.display = 'none';
-        } else if (step === 2) {
-            prevBtn.style.display = 'block';
-            nextBtn.style.display = 'block';
-            createBtn.style.display = 'none';
-        } else if (step === 3) {
-            prevBtn.style.display = 'block';
-            nextBtn.style.display = 'none';
-            createBtn.style.display = 'block';
-            _renderParticipantsStep(); 
+        if (prevBtn && nextBtn && createBtn) {
+            if (step === 1) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'block';
+                createBtn.style.display = 'none';
+            } else if (step === 2) {
+                prevBtn.style.display = 'block';
+                nextBtn.style.display = 'block';
+                createBtn.style.display = 'none';
+            } else if (step === 3) {
+                prevBtn.style.display = 'block';
+                nextBtn.style.display = 'none';
+                createBtn.style.display = 'block';
+                _renderParticipantsStep(); 
+            }
         }
     }
 
@@ -141,12 +158,11 @@ const EventWizard = (() => {
                 return;
             }
 
-            // 【修改點】公司事件防呆機制
+            // 公司事件防呆機制
             if (state.targetType === 'company') {
                 const message = `請確認您是在跟公司互動？\n\n此操作只會紀錄於「公司總覽」，\n(通常用於 SI、代理商或 MTB 的一般拜訪)，\n並「不會」存檔在任何機會案件中。\n\n確定要繼續嗎？`;
                 
                 showConfirmDialog(message, () => {
-                    // 使用者確認後，才進入下一步
                     setStep(2);
                 });
                 return; // 阻斷，等待確認
@@ -155,8 +171,13 @@ const EventWizard = (() => {
         
         // --- Step 2 驗證 ---
         if (state.step === 2) {
-            const name = document.getElementById('wiz-event-name').value.trim();
-            const time = document.getElementById('wiz-event-time').value;
+            const nameInput = document.getElementById('wiz-event-name');
+            const timeInput = document.getElementById('wiz-event-time');
+            const locInput = document.getElementById('wiz-event-location');
+
+            const name = nameInput ? nameInput.value.trim() : '';
+            const time = timeInput ? timeInput.value : '';
+            
             if (!name || !time) {
                 showNotification('事件名稱與發生時間為必填', 'warning');
                 return;
@@ -164,10 +185,10 @@ const EventWizard = (() => {
             // 暫存 DOM 資料回 State
             state.eventName = name;
             state.eventTime = time;
-            state.eventLocation = document.getElementById('wiz-event-location').value.trim();
+            state.eventLocation = locInput ? locInput.value.trim() : '';
         }
         
-        // 正常跳轉 (Step 1 機會 -> 2, 或 Step 2 -> 3)
+        // 正常跳轉
         setStep(state.step + 1);
     }
 
@@ -191,19 +212,27 @@ const EventWizard = (() => {
         }
 
         // Show search area
-        document.getElementById('wiz-target-search-area').style.display = 'block';
+        const searchArea = document.getElementById('wiz-target-search-area');
+        if(searchArea) searchArea.style.display = 'block';
+        
         const searchInput = document.getElementById('wiz-target-search');
-        searchInput.value = '';
-        searchInput.placeholder = type === 'opportunity' ? '搜尋機會名稱...' : '搜尋公司名稱...';
-        document.getElementById('wiz-search-label').textContent = type === 'opportunity' ? '搜尋機會' : '搜尋公司';
+        if(searchInput) {
+            searchInput.value = '';
+            searchInput.placeholder = type === 'opportunity' ? '搜尋機會名稱...' : '搜尋公司名稱...';
+            searchInput.focus();
+        }
+        
+        const label = document.getElementById('wiz-search-label');
+        if(label) label.textContent = type === 'opportunity' ? '搜尋機會' : '搜尋公司';
         
         // 自動載入預設列表
         searchTargets('');
-        searchInput.focus();
     }
 
     function searchTargets(query) {
         const resultsContainer = document.getElementById('wiz-target-results');
+        if(!resultsContainer) return;
+
         resultsContainer.style.display = 'block';
         resultsContainer.innerHTML = '<div class="loading show" style="padding:10px;"><div class="spinner" style="width:20px;height:20px"></div></div>';
 
@@ -269,8 +298,10 @@ const EventWizard = (() => {
         state.targetCompany = data.company;
 
         const input = document.getElementById('wiz-target-search');
-        input.value = data.name;
-        document.getElementById('wiz-target-results').style.display = 'none';
+        if(input) input.value = data.name;
+        
+        const results = document.getElementById('wiz-target-results');
+        if(results) results.style.display = 'none';
     }
     window.EventWizard_setTarget = _setTarget; 
 
@@ -287,47 +318,64 @@ const EventWizard = (() => {
     async function _renderParticipantsStep() {
         // 1. 渲染我方人員
         const myContainer = document.getElementById('wiz-our-participants');
-        const members = window.CRM_APP?.systemConfig?.['團隊成員'] || [];
-        
-        if (members.length === 0) {
-            myContainer.innerHTML = '<span>未設定團隊成員</span>';
-        } else {
-            myContainer.innerHTML = members.map(m => {
-                const isSelected = state.selectedOurParticipants.has(m.note) ? 'selected' : '';
-                return `<span class="wiz-tag ${isSelected}" onclick="EventWizard.toggleParticipant('our', '${m.note}', this)">${m.note}</span>`;
-            }).join('');
+        if (myContainer) {
+            const members = window.CRM_APP?.systemConfig?.['團隊成員'] || [];
+            
+            if (members.length === 0) {
+                myContainer.innerHTML = '<span>未設定團隊成員</span>';
+            } else {
+                myContainer.innerHTML = members.map(m => {
+                    const isSelected = state.selectedOurParticipants.has(m.note) ? 'selected' : '';
+                    return `<span class="wiz-tag ${isSelected}" onclick="EventWizard.toggleParticipant('our', '${m.note}', this)">${m.note}</span>`;
+                }).join('');
+            }
+
+            // 【新增】動態注入我方人員手動輸入框 (如果還沒有的話)
+            if (!document.getElementById('wiz-manual-our-participants')) {
+                const manualInput = document.createElement('input');
+                manualInput.type = 'text';
+                manualInput.id = 'wiz-manual-our-participants';
+                manualInput.className = 'form-input'; // 使用標準樣式
+                manualInput.placeholder = '+ 手動輸入 (逗號分隔)';
+                manualInput.style.marginTop = '8px';
+                manualInput.style.fontSize = '0.9rem';
+                // 插入到容器之後
+                myContainer.parentNode.insertBefore(manualInput, myContainer.nextSibling);
+            }
         }
 
         // 2. 渲染客戶人員
         const clientContainer = document.getElementById('wiz-client-participants');
-        clientContainer.innerHTML = '<span>載入中...</span>';
+        if (clientContainer) {
+            clientContainer.innerHTML = '<span>載入中...</span>';
 
-        if (!state.targetCompany) {
-            clientContainer.innerHTML = '<span>無法識別公司，請手動輸入</span>';
-            return;
-        }
-
-        try {
-            const encodedName = encodeURIComponent(state.targetCompany);
-            const result = await authedFetch(`/api/companies/${encodedName}/details`);
-            
-            if (result.success && result.data && result.data.contacts) {
-                const contacts = result.data.contacts;
-                if (contacts.length === 0) {
-                    clientContainer.innerHTML = '<span>此公司尚無聯絡人資料</span>';
-                } else {
-                    clientContainer.innerHTML = contacts.map(c => {
-                        const label = `${c.name}`;
-                        const isSelected = state.selectedClientParticipants.has(c.name) ? 'selected' : '';
-                        return `<span class="wiz-tag ${isSelected}" onclick="EventWizard.toggleParticipant('client', '${c.name}', this)">${label}</span>`;
-                    }).join('');
-                }
-            } else {
-                clientContainer.innerHTML = '<span>載入失敗</span>';
+            if (!state.targetCompany) {
+                clientContainer.innerHTML = '<span>無法識別公司，請手動輸入</span>';
+                return;
             }
-        } catch (e) {
-            console.error(e);
-            clientContainer.innerHTML = '<span>載入錯誤</span>';
+
+            try {
+                const encodedName = encodeURIComponent(state.targetCompany);
+                const result = await authedFetch(`/api/companies/${encodedName}/details`);
+                
+                if (result.success && result.data && result.data.contacts) {
+                    const contacts = result.data.contacts;
+                    if (contacts.length === 0) {
+                        clientContainer.innerHTML = '<span>此公司尚無聯絡人資料</span>';
+                    } else {
+                        clientContainer.innerHTML = contacts.map(c => {
+                            const label = `${c.name}`;
+                            const isSelected = state.selectedClientParticipants.has(c.name) ? 'selected' : '';
+                            return `<span class="wiz-tag ${isSelected}" onclick="EventWizard.toggleParticipant('client', '${c.name}', this)">${label}</span>`;
+                        }).join('');
+                    }
+                } else {
+                    clientContainer.innerHTML = '<span>載入失敗</span>';
+                }
+            } catch (e) {
+                console.error(e);
+                clientContainer.innerHTML = '<span>載入錯誤</span>';
+            }
         }
     }
 
@@ -345,11 +393,16 @@ const EventWizard = (() => {
     // --- 建立 (Create) ---
     async function create() {
         const createBtn = document.getElementById('wiz-create-btn');
-        createBtn.disabled = true;
-        createBtn.textContent = '建立中...';
+        if(createBtn) {
+            createBtn.disabled = true;
+            createBtn.textContent = '建立中...';
+        }
 
         try {
             // 收集資料
+            const manualClientInput = document.getElementById('wiz-manual-participants');
+            const manualOurInput = document.getElementById('wiz-manual-our-participants'); // 【新增】
+
             const payload = {
                 eventType: state.eventType,
                 eventName: state.eventName,
@@ -359,10 +412,16 @@ const EventWizard = (() => {
                 opportunityId: state.targetType === 'opportunity' ? state.targetId : '',
                 companyId: state.targetType === 'company' ? state.targetId : '',
                 
-                ourParticipants: Array.from(state.selectedOurParticipants).join(', '),
+                // 【修改】合併我方人員 (膠囊 + 手動)
+                ourParticipants: [
+                    ...Array.from(state.selectedOurParticipants),
+                    manualOurInput ? manualOurInput.value.trim() : ''
+                ].filter(Boolean).join(', '),
+
+                // 合併客戶人員 (膠囊 + 手動)
                 clientParticipants: [
                     ...Array.from(state.selectedClientParticipants),
-                    document.getElementById('wiz-manual-participants').value.trim()
+                    manualClientInput ? manualClientInput.value.trim() : ''
                 ].filter(Boolean).join(', '),
                 
                 creator: getCurrentUser()
@@ -389,17 +448,16 @@ const EventWizard = (() => {
                 };
                 const typeCN = typeMap[state.eventType] || state.eventType;
                 
-                // 組合訊息
-                // 使用 var(--accent-blue) 確保連結顏色清晰
+                // 3. 組合訊息，連結指向新的獨立編輯器
                 const messageHtml = ` 已為 <strong>${state.targetName}</strong> 建立 <strong>${typeCN}</strong> 紀錄：<strong>${state.eventName}</strong>。<br>` +
                                     `<a href="#" style="color: var(--accent-blue); text-decoration: underline; font-weight: bold; margin-left: 0; display: inline-block; margin-top: 5px;" ` +
-                                    `onclick="showEventLogFormModal({eventId: '${newEventId}'}); this.closest('.notification').remove(); return false;">` +
+                                    `onclick="EventEditorStandalone.open('${newEventId}'); this.closest('.notification').remove(); return false;">` +
                                     `👉 點此補充詳細內容</a>`;
 
-                // 3. 顯示永久通知 (duration: 0)
+                // 4. 顯示永久通知
                 showNotification(messageHtml, 'success', 0); 
                 
-                // 4. 觸發背景資料刷新
+                // 5. 觸發背景資料刷新
                 if (window.CRM_APP && window.CRM_APP.refreshCurrentView) {
                      window.CRM_APP.refreshCurrentView('資料同步中...');
                 }
@@ -412,8 +470,10 @@ const EventWizard = (() => {
             console.error(e);
             showNotification('建立失敗: ' + e.message, 'error');
         } finally {
-            createBtn.disabled = false;
-            createBtn.textContent = '✅ 建立並編輯詳情';
+            if(createBtn) {
+                createBtn.disabled = false;
+                createBtn.textContent = '✅ 建立並編輯詳情';
+            }
         }
     }
 

@@ -1,7 +1,9 @@
 // public/scripts/services/ui.js
 // 職責：管理所有全域 UI 元素，如彈窗、通知、面板、載入畫面和共用元件渲染器
 
-let zIndexCounter = 1100; // Start z-index for modals above typical elements
+// 【修改】將起始層級提高到 3000，確保系統彈窗永遠蓋在應用程式畫面(包含獨立編輯器)之上
+let zIndexCounter = 3000; 
+
 // Global variable to store the callback for the confirm dialog
 window.confirmActionCallback = null;
 let currentPreviewDriveLink = null;
@@ -158,6 +160,8 @@ function showLoading(message = '處理中...') {
     const messageEl = document.getElementById('loading-message');
     if (overlay && messageEl) {
         messageEl.textContent = message;
+        // 確保 loading 也在最上層
+        overlay.style.zIndex = zIndexCounter + 100; 
         overlay.style.display = 'flex'; 
         console.log(`[UI] Loading shown: ${message}`);
     } else {
@@ -196,8 +200,10 @@ function showNotification(message, type = 'info', duration = 3000) {
     notification.classList.add(type);
     if (iconSpan) iconSpan.textContent = iconMap[type] || '🔔'; 
     
-    // 【修改重點】使用 innerHTML 以支援超連結
     if (messageSpan) messageSpan.innerHTML = message;
+
+    // 確保通知也在最上層
+    notificationArea.style.zIndex = zIndexCounter + 200;
 
     const removeNotification = () => {
         notification.style.animation = 'slideOutRight 0.3s ease forwards';
@@ -211,7 +217,6 @@ function showNotification(message, type = 'info', duration = 3000) {
 
     notificationArea.appendChild(notification);
 
-    // 如果 duration 為 0，則不自動移除（用於需要手動操作的通知）
     if (duration > 0) {
         setTimeout(removeNotification, duration);
     }

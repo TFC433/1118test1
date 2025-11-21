@@ -1,11 +1,20 @@
 // public/scripts/event-editor-standalone.js
-// 職責：獨立的事件編輯器控制器 (彈性並排 + 專屬資訊分離版)
+// 職責：獨立的事件編輯器控制器 (含 DT Placeholders)
 
 const EventEditorStandalone = (() => {
     let _modal, _form, _inputs = {};
-    let _selectedOurParticipants = new Set();
-    let _selectedClientParticipants = new Set();
+    
+    let _data = {
+        ourParticipants: new Set(),
+        clientParticipants: new Set()
+    };
+    
     let _isInitialized = false;
+
+    const DEFAULT_OPTIONS = {
+        lineFeatures: ['工具機', 'ROBOT', '傳產機', 'PLC'],
+        painPoints: ['Monitoring', 'Improve OEE', 'Reduce Man-hours', 'Others']
+    };
 
     function _init() {
         if (_isInitialized) return;
@@ -22,18 +31,19 @@ const EventEditorStandalone = (() => {
             time: document.getElementById('standalone-createdTime'),
             location: document.getElementById('standalone-location'),
             
-            // 靜態通用欄位 (左欄)
             content: document.getElementById('standalone-content'),
             questions: document.getElementById('standalone-questions'),
             intelligence: document.getElementById('standalone-intelligence'),
             notes: document.getElementById('standalone-notes'),
 
             ourContainer: document.getElementById('standalone-our-participants-container'),
+            manualOur: document.getElementById('standalone-manual-our-participants'),
             clientContainer: document.getElementById('standalone-client-participants-container'),
             manualClient: document.getElementById('standalone-manual-participants'),
             
-            // 動態專屬欄位容器 (右欄)
             specificWrapper: document.getElementById('standalone-specific-wrapper'),
+            specificCard: document.getElementById('specific-info-card'),
+            specificTitle: document.getElementById('specific-card-title'),
             specificContainer: document.getElementById('standalone-specific-container'),
             workspaceGrid: document.getElementById('workspace-container'),
 
@@ -44,7 +54,20 @@ const EventEditorStandalone = (() => {
 
         _inputs.closeBtn.onclick = _close;
         _form.onsubmit = _handleSubmit;
+        
+        _form.addEventListener('input', (e) => {
+            if (e.target.tagName.toLowerCase() === 'textarea') {
+                _autoResize(e.target);
+            }
+        });
+
         _isInitialized = true;
+    }
+
+    function _autoResize(element) {
+        if (!element) return;
+        element.style.height = 'auto';
+        element.style.height = element.scrollHeight + 'px';
     }
 
     async function open(eventId) {
@@ -74,18 +97,18 @@ const EventEditorStandalone = (() => {
     }
 
     async function _populateForm(eventData) {
-        // 填入基本資料
         _inputs.id.value = eventData.eventId;
         _inputs.oppId.value = eventData.opportunityId || '';
         _inputs.compId.value = eventData.companyId || '';
         _inputs.name.value = eventData.eventName || '';
         _inputs.location.value = eventData.visitPlace || '';
         
-        // 填入靜態通用欄位
         _inputs.content.value = eventData.eventContent || '';
         _inputs.questions.value = eventData.clientQuestions || '';
         _inputs.intelligence.value = eventData.clientIntelligence || '';
         _inputs.notes.value = eventData.eventNotes || '';
+
+        [_inputs.content, _inputs.questions, _inputs.intelligence, _inputs.notes].forEach(_autoResize);
 
         if (eventData.createdTime) {
             const date = new Date(eventData.createdTime);
@@ -96,111 +119,183 @@ const EventEditorStandalone = (() => {
         const eventType = eventData.eventType || 'general';
         const typeToSelect = eventType === 'legacy' ? 'iot' : eventType;
         
-        // 載入類型 (這會決定是否顯示右欄)
-        await _applyTypeSwitch(typeToSelect, null);
+        await _applyTypeSwitch(typeToSelect, eventData);
 
-        // 人員處理
-        _selectedOurParticipants.clear();
-        (eventData.ourParticipants || '').split(',').map(p => p.trim()).filter(Boolean).forEach(p => _selectedOurParticipants.add(p));
-        
-        _selectedClientParticipants.clear();
+        _data.ourParticipants.clear();
+        const ourManualList = [];
+        const teamMembers = window.CRM_APP.systemConfig['團隊成員'] || [];
+        const teamNames = new Set(teamMembers.map(m => m.note));
+
+        (eventData.ourParticipants || '').split(',').map(p => p.trim()).filter(Boolean).forEach(p => {
+            if (teamNames.has(p)) _data.ourParticipants.add(p);
+            else ourManualList.push(p);
+        });
+        _renderPillSelector('our', _inputs.ourContainer, teamMembers, _data.ourParticipants);
+        _inputs.manualOur.value = ourManualList.join(', ');
+
+        _data.clientParticipants.clear();
         const clientList = (eventData.clientParticipants || '').split(',').map(p => p.trim()).filter(Boolean);
-        
-        _renderParticipants('our', _inputs.ourContainer, window.CRM_APP.systemConfig['團隊成員'] || [], _selectedOurParticipants);
         await _fetchAndPopulateClientParticipants(eventData.opportunityId, eventData.companyId, clientList);
-
-        // 填入動態專屬欄位 (右欄)
-        setTimeout(() => {
-            // 遍歷資料，嘗試填入表單中有名稱對應的欄位
-            for (const key in eventData) {
-                // 跳過已處理的標準欄位
-                if (['eventId', 'opportunityId', 'companyId', 'eventName', 'visitPlace', 'createdTime', 'ourParticipants', 'clientParticipants', 'eventType', 'eventContent', 'clientQuestions', 'clientIntelligence', 'eventNotes'].includes(key)) continue;
-                
-                // 尋找右欄中的輸入框
-                const el = _inputs.specificContainer.querySelector(`[name="${key}"], [name="iot_${key}"], [name="dt_${key}"]`);
-                if (el) {
-                    if (el.type === 'checkbox' || el.type === 'radio') {
-                        const values = String(eventData[key]).split(',').map(s => s.trim());
-                        if (values.includes(el.value)) el.checked = true;
-                    } else {
-                        el.value = eventData[key] || '';
-                    }
-                }
-            }
-        }, 100);
     }
 
     function selectType(newType, cardElement) {
         const currentType = _inputs.type.value;
         if (currentType === newType) return;
-        _applyTypeSwitch(newType, cardElement);
+
+        const container = _inputs.specificContainer;
+        let hasData = false;
+        let mergedData = '';
+
+        if (container) {
+            container.querySelectorAll('input[type="text"], textarea').forEach(el => {
+                if (el.value && el.value.trim()) {
+                    hasData = true;
+                    const label = el.closest('.form-group')?.querySelector('label')?.textContent || el.name;
+                    mergedData += `● ${label}：\n${el.value}\n\n`;
+                }
+            });
+            container.querySelectorAll('input[type="checkbox"]:checked, input[type="radio"]:checked').forEach(el => {
+                hasData = true;
+                let label = el.name; 
+                const groupLabel = el.closest('.form-group')?.querySelector('.iso-label');
+                if (groupLabel) label = groupLabel.textContent;
+                mergedData += `● ${label}：${el.value}\n\n`;
+            });
+        }
+
+        if (hasData) {
+            showConfirmDialog(`切換類型將移除目前專屬欄位資料，是否繼續？\n(舊資料將自動備份至備註)`, () => {
+                const currentNotes = _inputs.notes.value;
+                const nowStr = new Date().toLocaleString();
+                const backupBlock = `\n----------------------------------------\n【系統自動備份】 (${nowStr})\n原類型：${currentType}\n\n${mergedData}----------------------------------------\n`;
+                
+                _inputs.notes.value = currentNotes + backupBlock;
+                _autoResize(_inputs.notes);
+
+                _applyTypeSwitch(newType, {});
+            });
+        } else {
+            _applyTypeSwitch(newType, {});
+        }
     }
 
-    async function _applyTypeSwitch(newType, cardElement) {
-        // 更新 UI
+    async function _applyTypeSwitch(newType, eventData) {
         const grid = document.querySelector('#standalone-event-modal .type-select-grid');
         if (grid) {
             grid.querySelectorAll('.type-select-card').forEach(el => el.classList.remove('selected'));
-            if (cardElement) cardElement.classList.add('selected');
-            else {
-                const target = grid.querySelector(`.type-select-card[data-type="${newType}"]`);
-                if(target) target.classList.add('selected');
-            }
+            const target = grid.querySelector(`.type-select-card[data-type="${newType}"]`);
+            if(target) target.classList.add('selected');
         }
         _inputs.type.value = newType;
 
-        // 如果是 General，直接隱藏右欄，結束
+        _updateSpecificCardColor(newType);
+        _inputs.specificContainer.innerHTML = '';
+        
         if (newType === 'general') {
-            _inputs.specificContainer.innerHTML = '';
             _inputs.specificWrapper.style.display = 'none';
             _inputs.workspaceGrid.classList.remove('has-sidebar');
-            return;
-        }
-
-        // 載入範本並提取「專屬資訊」
-        let formName = newType === 'dx' ? 'general' : newType;
-        let html = window.CRM_APP.formTemplates[formName];
-        
-        if (!html) {
-            try {
-                const res = await fetch(`event-form-${formName}.html`);
-                html = await res.text();
-                window.CRM_APP.formTemplates[formName] = html;
-            } catch (e) {
-                console.error("載入範本失敗", e);
-                return;
-            }
-        }
-
-        // 解析 HTML 提取專屬欄位
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        
-        // 尋找不包含「共通資訊」的 fieldset
-        let specificContent = '';
-        const fieldsets = doc.querySelectorAll('fieldset');
-        fieldsets.forEach(fs => {
-            const legend = fs.querySelector('legend');
-            if (!legend || !legend.textContent.includes('共通資訊')) {
-                // 移除 legend 標籤本身，只取內容
-                if(legend) legend.remove();
-                specificContent += fs.innerHTML;
-            }
-        });
-
-        if (specificContent.trim()) {
-            _inputs.specificContainer.innerHTML = specificContent;
-            _inputs.specificWrapper.style.display = 'block';
-            _inputs.workspaceGrid.classList.add('has-sidebar'); // 觸發並排
         } else {
-            // 如果雖然是特殊類型但沒抓到專屬欄位 (如 DX 也是用 general 範本)
-            _inputs.specificContainer.innerHTML = '';
-            _inputs.specificWrapper.style.display = 'none';
-            _inputs.workspaceGrid.classList.remove('has-sidebar');
+            _inputs.specificWrapper.style.display = 'block';
+            _inputs.workspaceGrid.classList.add('has-sidebar');
+            
+            if (newType === 'iot') {
+                _renderIoTFields(eventData);
+            } else if (newType === 'dt') {
+                // 加入 Placeholders
+                _renderSimpleFields(eventData, 
+                    ['dt_deviceScale', 'dt_processingType', 'dt_industry'], 
+                    ['設備規模', '加工類型', '加工產業別'],
+                    ['例：預計導入機台數、場域大小...', '例：CNC、射出成型、組裝...', '例：航太、半導體、車用...']
+                );
+            } else {
+                _inputs.specificContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">無專屬欄位設定</p>';
+            }
+            
+            _inputs.specificContainer.querySelectorAll('textarea').forEach(_autoResize);
         }
     }
 
-    // 人員處理
+    function _updateSpecificCardColor(type) {
+        const config = window.CRM_APP?.systemConfig?.['事件類型'] || [];
+        const typeConfig = config.find(t => t.value === type);
+        const baseColor = typeConfig?.color || '#64748b';
+        
+        _inputs.specificCard.style.backgroundColor = `color-mix(in srgb, ${baseColor} 5%, white)`;
+        _inputs.specificCard.style.borderColor = `color-mix(in srgb, ${baseColor} 20%, white)`;
+        _inputs.specificTitle.style.color = baseColor;
+        _inputs.specificTitle.style.borderBottomColor = `color-mix(in srgb, ${baseColor} 20%, white)`;
+    }
+
+    function _renderIoTFields(data) {
+        const container = _inputs.specificContainer;
+        
+        container.innerHTML += _createInputHTML('iot_deviceScale', '設備規模', data.iot_deviceScale, '例：機台數量 50 台、PLC 型號...');
+
+        const lineFeaturesVal = (data.iot_lineFeatures || '').split(',').map(s=>s.trim());
+        container.innerHTML += _createCheckboxGroupHTML('iot_lineFeatures', '生產線特徵(可多選)', DEFAULT_OPTIONS.lineFeatures, lineFeaturesVal);
+
+        container.innerHTML += _createTextareaHTML('iot_productionStatus', '生產現況', data.iot_productionStatus, '請描述客戶目前的生產流程、稼動率或遇到的瓶頸...');
+        container.innerHTML += _createTextareaHTML('iot_iotStatus', 'IoT現況', data.iot_iotStatus, '客戶是否已導入 MES、ERP 或其他聯網系統？');
+        
+        const painPointsVal = (data.iot_painPoints || '').split(',').map(s=>s.trim());
+        container.innerHTML += _createCheckboxGroupHTML('iot_painPoints', '痛點分類(可多選)', DEFAULT_OPTIONS.painPoints, painPointsVal);
+
+        container.innerHTML += _createTextareaHTML('iot_painPointDetails', '客戶痛點說明', data.iot_painPointDetails, '請詳細描述客戶提出的具體困難點...');
+        container.innerHTML += _createTextareaHTML('iot_painPointAnalysis', '痛點分析與對策', data.iot_painPointAnalysis, '針對上述痛點，我方提出的分析觀點或初步對策...');
+        container.innerHTML += _createTextareaHTML('iot_systemArchitecture', '系統架構', data.iot_systemArchitecture, '請描述預計導入的架構、硬體配置或軟體模組...');
+    }
+
+    // 更新：支援 placeholders
+    function _renderSimpleFields(data, keys, labels, placeholders = []) {
+        let html = '';
+        keys.forEach((key, idx) => {
+            html += _createInputHTML(key, labels[idx], data[key], placeholders[idx] || '');
+        });
+        _inputs.specificContainer.innerHTML = html;
+    }
+
+    function _createInputHTML(name, label, value = '', placeholder = '') {
+        return `<div class="form-group"><label class="iso-label">${label}</label><input type="text" class="iso-input" name="${name}" value="${value}" placeholder="${placeholder}"></div>`;
+    }
+    function _createTextareaHTML(name, label, value = '', placeholder = '') {
+        return `<div class="form-group"><label class="iso-label">${label}</label><textarea class="form-textarea" name="${name}" rows="1" placeholder="${placeholder}">${value}</textarea></div>`;
+    }
+    function _createCheckboxGroupHTML(name, label, options, selectedValues) {
+        let checks = options.map(opt => {
+            const checked = selectedValues.includes(opt) ? 'checked' : '';
+            return `<label><input type="checkbox" name="${name}" value="${opt}" ${checked}> ${opt}</label>`;
+        }).join('');
+        return `<div class="form-group"><label class="iso-label">${label}</label><div class="checkbox-group">${checks}</div></div>`;
+    }
+
+    function _renderPillSelector(type, container, optionsList, selectedSet) {
+        if (!container) return;
+        const allItems = new Map();
+        optionsList.forEach(opt => {
+            const val = opt.value || opt.name || opt.note;
+            const label = opt.note || opt.name || val;
+            allItems.set(val, label);
+        });
+
+        let html = '';
+        allItems.forEach((label, val) => {
+            const isSelected = selectedSet.has(val) ? 'selected' : '';
+            html += `<span class="participant-pill-tag ${isSelected}" onclick="EventEditorStandalone.toggleItem('${type}', '${val}', this)">${label}</span>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function toggleItem(dataSetKey, val, el) {
+        let targetSet = (dataSetKey === 'our') ? _data.ourParticipants : _data.clientParticipants;
+        if (targetSet.has(val)) {
+            targetSet.delete(val);
+            el.classList.remove('selected');
+        } else {
+            targetSet.add(val);
+            el.classList.add('selected');
+        }
+    }
+
     async function _fetchAndPopulateClientParticipants(oppId, compId, currentList) {
         let contacts = [];
         try {
@@ -220,37 +315,11 @@ const EventEditorStandalone = (() => {
         const manualList = [];
         const knownNames = new Set(contacts.map(c => c.name));
         currentList.forEach(p => {
-            // 只有在名單內才轉為膠囊，否則保留為手動輸入
-            if (knownNames.has(p)) _selectedClientParticipants.add(p);
+            if (knownNames.has(p)) _data.clientParticipants.add(p);
             else manualList.push(p);
         });
-        
-        _renderParticipants('client', _inputs.clientContainer, contacts, _selectedClientParticipants);
+        _renderPillSelector('client', _inputs.clientContainer, contacts, _data.clientParticipants);
         _inputs.manualClient.value = manualList.join(', ');
-    }
-
-    function _renderParticipants(type, container, list, set) {
-        if (list.length === 0) {
-            container.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">無資料</span>';
-            return;
-        }
-        container.innerHTML = list.map(item => {
-            const val = item.name || item.note;
-            const label = item.position ? `${val} (${item.position})` : val;
-            const selected = set.has(val) ? 'selected' : '';
-            return `<span class="participant-pill-tag ${selected}" onclick="EventEditorStandalone.toggleParticipant('${type}', '${val}', this)">${label}</span>`;
-        }).join('');
-    }
-
-    function toggleParticipant(type, val, el) {
-        const set = type === 'our' ? _selectedOurParticipants : _selectedClientParticipants;
-        if (set.has(val)) {
-            set.delete(val);
-            el.classList.remove('selected');
-        } else {
-            set.add(val);
-            el.classList.add('selected');
-        }
     }
 
     async function _handleSubmit(e) {
@@ -258,14 +327,20 @@ const EventEditorStandalone = (() => {
         const id = _inputs.id.value;
         const formData = new FormData(_form);
         const data = {};
-        for (let [k, v] of formData.entries()) if (!data[k]) data[k] = v;
+        
+        for (let [k, v] of formData.entries()) {
+            if (!data[k]) data[k] = v;
+        }
 
-        data.ourParticipants = Array.from(_selectedOurParticipants).join(', ');
-        const manuals = _inputs.manualClient.value.split(',').map(s => s.trim()).filter(Boolean);
-        data.clientParticipants = [...Array.from(_selectedClientParticipants), ...manuals].join(', ');
+        const mergePillsAndInput = (set, inputEl) => {
+            const manuals = inputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+            return [...Array.from(set), ...manuals].join(', ');
+        };
+        data.ourParticipants = mergePillsAndInput(_data.ourParticipants, _inputs.manualOur);
+        data.clientParticipants = mergePillsAndInput(_data.clientParticipants, _inputs.manualClient);
+
         if (_inputs.time.value) data.createdTime = new Date(_inputs.time.value).toISOString();
 
-        // 多選 Checkbox 處理
         const checkboxes = _form.querySelectorAll('input[type="checkbox"][name]:checked');
         const multi = {};
         checkboxes.forEach(cb => {
@@ -276,27 +351,17 @@ const EventEditorStandalone = (() => {
 
         _setLoading(true, '儲存中...');
         try {
-            const res = await authedFetch(`/api/events/${id}`, {
-                method: 'PUT',
-                body: JSON.stringify(data)
-            });
+            const res = await authedFetch(`/api/events/${id}`, { method: 'PUT', body: JSON.stringify(data) });
             if (res.success) {
                 _close();
-                if (window.CRM_APP && window.CRM_APP.refreshCurrentView) {
-                    window.CRM_APP.refreshCurrentView('更新成功！');
-                }
-            } else {
-                throw new Error(res.error);
-            }
-        } catch (e) {
-            showNotification('儲存失敗: ' + e.message, 'error');
-        } finally {
-            _setLoading(false);
-        }
+                if (window.CRM_APP && window.CRM_APP.refreshCurrentView) window.CRM_APP.refreshCurrentView('更新成功！');
+            } else throw new Error(res.error);
+        } catch (e) { showNotification('儲存失敗: ' + e.message, 'error'); } 
+        finally { _setLoading(false); }
     }
 
     function _confirmDelete(id, name) {
-        showConfirmDialog(`確定刪除事件 "${name}"？此操作無法復原。`, async () => {
+        showConfirmDialog(`確定刪除事件 "${name}"？`, async () => {
             showLoading('刪除中...');
             try {
                 await authedFetch(`/api/events/${id}`, { method: 'DELETE' });
@@ -309,10 +374,10 @@ const EventEditorStandalone = (() => {
     function _close() { if (_modal) _modal.style.display = 'none'; }
     function _resetForm() {
         _form.reset();
-        _selectedOurParticipants.clear();
-        _selectedClientParticipants.clear();
+        _data.ourParticipants.clear();
+        _data.clientParticipants.clear();
         _setLoading(false);
-        // 重置佈局
+        
         _inputs.specificContainer.innerHTML = '';
         _inputs.specificWrapper.style.display = 'none';
         _inputs.workspaceGrid.classList.remove('has-sidebar');
@@ -325,7 +390,7 @@ const EventEditorStandalone = (() => {
     return {
         open: open,
         selectType: selectType,
-        toggleParticipant: toggleParticipant
+        toggleItem: toggleItem
     };
 })();
 
