@@ -564,7 +564,7 @@ CRM_APP.navigateTo = async function(pageName, params = {}, updateHistory = true)
     }
 
     // --- Load Page Module Function ---
-    // *** 關鍵修正：當 pageName 是 'dashboard' 時，直接呼叫 dashboardManager.refresh() ***
+    // *** 修正：當 pageName 是 'dashboard' 時，直接呼叫 dashboardManager.refresh() ***
     if (pageName === 'dashboard') {
         console.log(`[Main] Navigating to dashboard, forcing refresh...`);
         if (window.dashboardManager && typeof window.dashboardManager.refresh === 'function') {
@@ -665,10 +665,24 @@ function logout() { /* ... (Logic remains the same) ... */
     setTimeout(() => { window.location.href = '/'; }, 1000);
 }
 
-// --- Load HTML Components (Modals, Templates) --- (無變更)
-async function loadHTMLComponents() { /* ... (Logic remains the same) ... */
+// --- Load HTML Components (Modals, Templates) --- (修改處)
+async function loadHTMLComponents() { 
     console.log('[Main] Loading HTML components...');
-    const modalComponents = ['contact-modals', 'opportunity-modals', 'meeting-modals', 'system-modals', 'event-log-modal', 'event-log-views', 'link-contact-modal', 'link-opportunity-modal', 'announcement-modals'];
+    
+    // 【修改】加入 'event-editor-standalone'
+    const modalComponents = [
+        'contact-modals', 
+        'opportunity-modals', 
+        'meeting-modals', 
+        'system-modals', 
+        'event-log-modal', 
+        'event-log-views', 
+        'link-contact-modal', 
+        'link-opportunity-modal', 
+        'announcement-modals',
+        'event-editor-standalone' // <--- 新增這一行
+    ];
+    
     const formTemplates = ['general', 'iot', 'dt', 'dx']; // 'dx' maps to 'general'
 
     try {

@@ -60,7 +60,9 @@ async function showEventLogReport(eventId) {
         // 4. 綁定按鈕事件
         document.getElementById('edit-event-log-btn').onclick = () => {
             closeModal('event-log-report-modal');
-            showEventLogFormModal({ eventId: eventId });
+            
+            // --- 【修改】切換至新的獨立編輯器 ---
+            EventEditorStandalone.open(eventId); 
         };
         document.getElementById('save-report-as-pdf-btn').onclick = () => exportReportToPdf(eventData);
         document.getElementById('report-delete-event-btn').onclick = () => {
@@ -88,7 +90,7 @@ function _renderParticipantsPills(participantsStr, typeClass, contextContacts = 
     if (!participantsStr) return '-';
 
     // 切割：只認逗號
-    const names = participantsStr.split(/[,，、]+/)
+    const names = participantsStr.split(/[,，、;]+/)
         .map(s => s.trim())
         .filter(Boolean);
 
