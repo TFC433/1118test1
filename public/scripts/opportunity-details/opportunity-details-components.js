@@ -1,6 +1,6 @@
 // views/scripts/opportunity-details/opportunity-details-components.js
 // 職責：整合機會詳細頁面中所有「純顯示」與「可編輯資訊卡」的組件
-// (V12 - 顯示模式微調：設備規模移至銷售管道上方)
+// (V13 - 版面優化：設備規模與銷售管道移至右欄，平衡左右視覺重心)
 
 function _injectStylesForOppInfoCard() {
     const styleId = 'opportunity-info-card-styles';
@@ -94,6 +94,7 @@ function _injectStylesForOppInfoCard() {
             border-color: var(--brand-color, var(--text-muted));
         }
 
+        /* 備註區塊：保持全寬與上方線條 */
         .notes-section {
             margin-top: var(--spacing-5);
             padding-top: var(--spacing-5);
@@ -443,14 +444,14 @@ const OpportunityInfoCard = (() => {
                         <span class="info-label">預計結案日期</span>
                         <span class="info-value">${formatDate(opp.expectedCloseDate)}</span>
                     </div>
-
-                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模', 'blue')}
-                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道', 'blue')}
-                </div>
+                    </div>
 
                 <div class="info-col">
                     ${_renderOptionsGroup('下單機率', opp.orderProbability, '下單機率', 'blue')}
                     ${_renderOptionsGroup('可能下單規格', opp.potentialSpecification, '可能下單規格')}
+                    
+                    ${_renderOptionsGroup('設備規模', opp.deviceScale, '設備規模', 'blue')}
+                    ${_renderOptionsGroup('可能銷售管道', opp.salesChannel, '可能銷售管道', 'blue')}
                 </div>
             </div>
 

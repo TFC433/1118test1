@@ -1,6 +1,6 @@
-// views/scripts/opportunities.js
+// public/scripts/opportunities.js
 // 職責：管理「機會案件列表頁」的圖表、篩選、列表渲染與操作
-// (已調整最後活動欄位順序，並改用 createThemedChart)
+// (V-Final: 移除列表編輯按鈕 + 修復刪除轉圈問題)
 
 // ==================== 全域變數 (此頁面專用) ====================
 let opportunitiesData = [];
@@ -70,7 +70,7 @@ async function loadOpportunities(query = '') {
                     opportunityType: new Map((systemConfig['機會種類'] || []).map(i => [i.note || i.value, i.value])),
                     currentStage: new Map((systemConfig['機會階段'] || []).map(i => [i.note || i.value, i.value])),
                     orderProbability: new Map((systemConfig['下單機率'] || []).map(i => [i.note || i.value, i.value])),
-                    potentialSpecification: new Map((systemConfig['可能下單規格'] || []).map(i => [i.note || i.value, i.value])), // <-- 【*** 修改點：確保 note -> value 的映射 ***】
+                    potentialSpecification: new Map((systemConfig['可能下單規格'] || []).map(i => [i.note || i.value, i.value])),
                     salesChannel: new Map((systemConfig['可能銷售管道'] || []).map(i => [i.note || i.value, i.value])),
                     deviceScale: new Map((systemConfig['設備規模'] || []).map(i => [i.note || i.value, i.value]))
                 };
@@ -125,8 +125,6 @@ async function loadOpportunities(query = '') {
                 onItemUpdate: () => {
                      // 當 ChipWall 內部拖曳更新後的回調
                     if(window.CRM_APP?.pageConfig) window.CRM_APP.pageConfig.dashboard.loaded = false; // 標記儀表板需刷新
-                     // 可以在這裡選擇是否重新載入列表頁或只更新 ChipWall
-                     // loadOpportunities(); // 重新載入整個頁面
                 }
             });
             chipWall.render();
@@ -150,8 +148,8 @@ async function loadOpportunities(query = '') {
 
 /**
  * 篩選並重新渲染機會列表的核心函式
- * @param {string|null} filterKey - 要篩選的欄位鍵名 (e.g., 'opportunitySource')
- * @param {string|null} filterDisplayValue - 要篩選的顯示值 (e.g., '廣告')
+ * @param {string|null} filterKey - 要篩選的欄位鍵名
+ * @param {string|null} filterDisplayValue - 要篩選的顯示值
  * @param {string} [query=''] - 搜尋框的關鍵字
  */
 function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '') {
@@ -164,51 +162,41 @@ function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '')
         return;
     }
 
-    let filteredData = [...opportunitiesData]; // 從已包含 effectiveLastActivity 的全域資料開始
+    let filteredData = [...opportunitiesData];
 
     // 步驟 1: 處理圖表點擊篩選
-    let currentFilterDisplayValue = null; // 用於傳遞給搜尋
+    let currentFilterDisplayValue = null;
     if (filterKey && filterDisplayValue) {
-        // 使用反向映射將顯示值轉回內部值
         const filterValue = reverseNameMaps[filterKey]?.get(filterDisplayValue) || filterDisplayValue;
         console.log(`[Filter] Applying filter: Key=${filterKey}, DisplayValue=${filterDisplayValue}, ActualValue=${filterValue}`);
         
-        // 【*** 程式碼修改點：針對 potentialSpecification 的特殊篩選邏輯 ***】
         if (filterKey === 'potentialSpecification') {
             filteredData = filteredData.filter(opp => {
                 const specData = opp.potentialSpecification;
                 if (!specData) return false;
-                
                 try {
-                    // 嘗試解析新版 JSON
                     const parsedJson = JSON.parse(specData);
                     if (parsedJson && typeof parsedJson === 'object') {
-                        // 檢查 key 是否存在 (e.g., filterValue is 'product_a')
                         return parsedJson.hasOwnProperty(filterValue) && parsedJson[filterValue] > 0;
                     }
                 } catch (e) {
-                    // 向下相容：解析舊版 "規格A,規格B"
                     if (typeof specData === 'string') {
-                        // 檢查 filterValue (e.g., '規格A') 是否在舊字串中
                         return specData.split(',').map(s => s.trim()).includes(filterValue);
                     }
                 }
                 return false;
             });
         } else {
-             // --- 原本的通用篩選邏輯 ---
             filteredData = filteredData.filter(opp => {
                 const oppValue = opp[filterKey] || '';
                 return oppValue === filterValue;
             });
         }
-        // 【*** 修改結束 ***】
 
         filterStatus.style.display = 'flex';
         filterText.textContent = `篩選條件: ${filterDisplayValue}`;
-        currentFilterDisplayValue = filterDisplayValue; // 記錄當前篩選
+        currentFilterDisplayValue = filterDisplayValue;
 
-        // 將其他圖表取消選中狀態
         Highcharts.charts.forEach(chart => {
             if (chart && chart.series && chart.series[0] && chart.series[0].points) {
                 chart.series[0].points.forEach(point => {
@@ -222,8 +210,7 @@ function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '')
     } else {
         filterStatus.style.display = 'none';
         filterText.textContent = '';
-        currentFilterDisplayValue = null; // 清除篩選記錄
-        // 清除所有圖表的選中狀態
+        currentFilterDisplayValue = null;
         Highcharts.charts.forEach(chart => {
             if (chart && chart.series && chart.series[0] && chart.series[0].points) {
                  chart.series[0].points.forEach(point => {
@@ -238,7 +225,6 @@ function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '')
     // 步驟 2: 處理搜尋框篩選
     const searchTerm = (query !== undefined ? query : document.getElementById('opportunities-list-search')?.value || '').toLowerCase();
     if (searchTerm) {
-        console.log(`[Filter] Applying search term: ${searchTerm}`);
         filteredData = filteredData.filter(o =>
             (o.opportunityName && o.opportunityName.toLowerCase().includes(searchTerm)) ||
             (o.customerCompany && o.customerCompany.toLowerCase().includes(searchTerm))
@@ -249,7 +235,7 @@ function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '')
     const sortedForTable = filteredData.sort((a, b) => (b.effectiveLastActivity || 0) - (a.effectiveLastActivity || 0));
     listContent.innerHTML = renderOpportunitiesTable(sortedForTable);
 
-    // 步驟 4: 更新搜尋框的值 (如果是由 filterAndRenderOpportunities 內部觸發的搜尋)
+    // 步驟 4: 更新搜尋框的值
     const searchInput = document.getElementById('opportunities-list-search');
     if (searchInput && query !== undefined && searchInput.value !== query) {
         searchInput.value = query;
@@ -259,7 +245,6 @@ function filterAndRenderOpportunities(filterKey, filterDisplayValue, query = '')
 
 function handleOpportunitiesSearch(event) {
     const query = event.target.value;
-    // 從篩選狀態元素讀取當前圖表篩選
     const filterStatus = document.getElementById('opportunities-filter-status');
     const filterText = document.getElementById('opportunities-filter-text');
     let filterKey = null;
@@ -269,40 +254,30 @@ function handleOpportunitiesSearch(event) {
         const match = filterText.textContent.match(/篩選條件: (.*)/);
         filterDisplayValue = match ? match[1] : null;
         if (filterDisplayValue) {
-            // 根據顯示值反查 filterKey
             for (const k in reverseNameMaps) {
-                if (reverseNameMaps[k]?.has(filterDisplayValue)) { // 安全訪問
+                if (reverseNameMaps[k]?.has(filterDisplayValue)) {
                     filterKey = k;
                     break;
                 }
             }
         }
     }
-
-    // 使用 debounce 避免過於頻繁的觸發
     handleSearch(() => filterAndRenderOpportunities(filterKey, filterDisplayValue, query));
 }
 
 
 /**
- * 通用圓餅圖選項產生器 (包含點擊篩選邏輯)
- * @param {string} seriesName - 系列名稱
- * @param {Array} data - 圖表數據 [{ name: '...', y: ... }, ...]
- * @param {string} filterKey - 點擊時要篩選的欄位鍵名
- * @returns {object} Highcharts 選項物件 (只包含 specificOptions)
+ * 通用圓餅圖選項產生器
  */
 function getPieChartOptions(seriesName, data, filterKey) {
-    // 確保 data 是有效陣列
     if (!Array.isArray(data)) {
         console.warn(`[getPieChartOptions] Invalid data for ${seriesName}:`, data);
-        data = []; // 使用空陣列避免錯誤
+        data = [];
     }
-     // 確保 data 內部元素格式正確
      const validatedData = data.map(d => ({
         name: d.name || '未分類',
         y: d.y || 0
      }));
-
 
     const specificOptions = {
         chart: { type: 'pie' },
@@ -316,7 +291,6 @@ function getPieChartOptions(seriesName, data, filterKey) {
                     enabled: true,
                     format: '<b>{point.name}</b>: {point.percentage:.1f}%',
                     distance: 20,
-                    // style 和 connectorColor 會從主題繼承
                 },
                 showInLegend: false,
                 point: {
@@ -324,18 +298,14 @@ function getPieChartOptions(seriesName, data, filterKey) {
                         click: function() {
                             const currentFilterTextEl = document.getElementById('opportunities-filter-text');
                             const currentFilterStatusEl = document.getElementById('opportunities-filter-status');
-                            const isCurrentlySelected = this.selected; // 記錄點擊前的狀態
+                            const isCurrentlySelected = this.selected;
                             const currentFilterDisplay = currentFilterTextEl ? currentFilterTextEl.textContent.replace('篩選條件: ','') : null;
 
-                            // 如果點擊的是已選中的點，或者篩選狀態目前顯示的不是這個點的名稱
                             if (isCurrentlySelected || (currentFilterStatusEl && currentFilterStatusEl.style.display !== 'none' && currentFilterDisplay !== this.name)) {
-                                filterAndRenderOpportunities(null, null); // 清除篩選
+                                filterAndRenderOpportunities(null, null);
                             } else {
-                                filterAndRenderOpportunities(filterKey, this.name); // 應用篩選
+                                filterAndRenderOpportunities(filterKey, this.name);
                             }
-                            // 手動同步選中狀態 (Highcharts 可能不會自動取消選中)
-                            // 延遲一點執行 select 確保 filterAndRenderOpportunities 中的取消邏輯先執行
-                            // setTimeout(() => this.select(!isCurrentlySelected, true), 0); // 移除手動 select，讓 filterAndRenderOpportunities 控制
                         }
                     }
                 }
@@ -343,16 +313,14 @@ function getPieChartOptions(seriesName, data, filterKey) {
         },
         series: [{ name: seriesName, data: validatedData }]
     };
-    return specificOptions; // 返回 specificOptions 供 createThemedChart 使用
+    return specificOptions;
 }
 
 
 function renderOpportunityCharts(chartData) {
     const container = document.getElementById('opportunities-dashboard-container');
-    if (!container) {
-         console.error('[Opportunities] 圖表容器 #opportunities-dashboard-container 未找到。');
-         return;
-    }
+    if (!container) return;
+    
     container.innerHTML = `
         <div class="dashboard-widget grid-col-3"><div class="widget-header"><h2 class="widget-title">機會趨勢 (近30天)</h2></div><div id="opp-trend-chart" class="widget-content" style="height: 250px;"></div></div>
         <div class="dashboard-widget grid-col-3"><div class="widget-header"><h2 class="widget-title">機會來源分佈</h2></div><div id="opp-source-chart" class="widget-content" style="height: 250px;"></div></div>
@@ -365,30 +333,21 @@ function renderOpportunityCharts(chartData) {
     `;
 
     setTimeout(() => {
-        // 確保 Highcharts 和 chartData 都存在
         if (typeof Highcharts !== 'undefined' && typeof createThemedChart === 'function' && chartData) {
             renderOppTrendChart(chartData.trend);
-            // 所有圓餅圖都使用新的通用選項產生器和 createThemedChart
             createThemedChart('opp-source-chart', getPieChartOptions('來源', chartData.source, 'opportunitySource'));
             createThemedChart('opp-type-chart', getPieChartOptions('種類', chartData.type, 'opportunityType'));
-            renderOppStageChart(chartData.stage); // 長條圖單獨處理
+            renderOppStageChart(chartData.stage);
             createThemedChart('opp-probability-chart', getPieChartOptions('機率', chartData.probability, 'orderProbability'));
-            
-            // 【*** 程式碼修改點：使用 'potentialSpecification' ***】
             createThemedChart('opp-spec-chart', getPieChartOptions('規格', chartData.specification, 'potentialSpecification'));
-            
             createThemedChart('opp-channel-chart', getPieChartOptions('管道', chartData.channel, 'salesChannel'));
             createThemedChart('opp-scale-chart', getPieChartOptions('規模', chartData.scale, 'deviceScale'));
-        } else {
-             console.error('[Opportunities] Highcharts 或 createThemedChart 未定義，或 chartData 為空，無法渲染圖表。');
-             // 可以選擇在此處為每個圖表容器顯示錯誤訊息
         }
     }, 0);
 }
 
 function renderOppTrendChart(data) {
      if (!data || !Array.isArray(data)) {
-        console.warn('[Opportunities] 趨勢圖渲染失敗：無效的 data。', data);
         const container = document.getElementById('opp-trend-chart');
         if (container) container.innerHTML = '<div class="alert alert-warning" style="text-align: center; padding: 10px;">無趨勢資料</div>';
         return;
@@ -406,28 +365,22 @@ function renderOppTrendChart(data) {
 
 function renderOppStageChart(data) {
      if (!data || !Array.isArray(data)) {
-        console.warn('[Opportunities] 階段圖渲染失敗：無效的 data。', data);
         const container = document.getElementById('opp-stage-chart');
         if (container) container.innerHTML = '<div class="alert alert-warning" style="text-align: center; padding: 10px;">無階段資料</div>';
         return;
      }
-
-     // 確保 data 內部元素格式正確
      const validatedData = data.map(d => [d[0] || '未分類', d[1] || 0]);
 
     const specificOptions = {
         chart: { type: 'bar' },
         title: { text: '' },
-        xAxis: { categories: validatedData.map(d => d[0]), title: { text: null } }, // 使用 category 作為 X 軸
+        xAxis: { categories: validatedData.map(d => d[0]), title: { text: null } },
         yAxis: { min: 0, title: { text: '案件數量', align: 'high' }, allowDecimals: false },
         legend: { enabled: false },
-        series: [{
-            name: '數量',
-            data: validatedData.map(d => d[1]) // 使用 y 作為數據
-        }],
+        series: [{ name: '數量', data: validatedData.map(d => d[1]) }],
         plotOptions: {
             bar: {
-                 cursor: 'pointer', // 增加鼠標樣式
+                 cursor: 'pointer',
                  point: {
                     events: {
                         click: function() {
@@ -441,7 +394,6 @@ function renderOppStageChart(data) {
                            } else {
                                filterAndRenderOpportunities('currentStage', this.category);
                            }
-                            // setTimeout(() => this.select(!isCurrentlySelected, true), 0); // 移除手動 select
                         }
                     }
                 }
@@ -465,7 +417,7 @@ function renderOpportunitiesTable(opportunities) {
             .opportunity-list-table .col-last-activity { min-width: 140px; }
             .opportunity-list-table .col-opportunity-name,
             .opportunity-list-table .col-company-name { max-width: 200px; }
-            .opportunity-list-table .col-actions { min-width: 280px; overflow: visible; }
+            .opportunity-list-table .col-actions { min-width: 80px; overflow: visible; } /* 調整寬度 */
             .opportunity-list-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         `;
         document.head.appendChild(style);
@@ -485,30 +437,27 @@ function renderOpportunitiesTable(opportunities) {
                 </tr></thead><tbody>`;
 
     const systemConfig = window.CRM_APP?.systemConfig;
-    const stageNotes = new Map((systemConfig?.['機會階段'] || []).map(s => [s.value, s.note || s.value])); // 使用 note 或 value
+    const stageNotes = new Map((systemConfig?.['機會階段'] || []).map(s => [s.value, s.note || s.value]));
     const typeConfigs = new Map((systemConfig?.['機會種類'] || []).map(t => [t.value, { note: t.note, color: t.color }]));
 
     opportunities.forEach(opp => {
         const stageDisplayName = stageNotes.get(opp.currentStage) || opp.currentStage || '未分類';
-        const companyName = opp.customerCompany || ''; // 保護
+        const companyName = opp.customerCompany || '';
         const encodedCompanyName = encodeURIComponent(companyName);
-        const opportunityName = opp.opportunityName || '(未命名)'; // 保護
-        const safeOpportunityName = opportunityName.replace(/'/g, "\\'").replace(/"/g, '&quot;'); // 處理引號
+        const opportunityName = opp.opportunityName || '(未命名)';
+        const safeOpportunityName = opportunityName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
         const companyCell = companyName
             ? `<td data-label="客戶公司" class="col-company-name" title="${companyName}"><a href="#" class="text-link" onclick="event.preventDefault(); CRM_APP.navigateTo('company-details', { companyName: '${encodedCompanyName}' })">${companyName}</a></td>`
             : `<td data-label="客戶公司">-</td>`;
 
-        // 確保 opp.opportunityId 存在
         const oppId = opp.opportunityId || '';
-        const editButtonOnClick = oppId ? `editOpportunity('${oppId}')` : 'showNotification("無效的機會ID", "error")';
-        const deleteButtonOnClick = `confirmDeleteOpportunity(${opp.rowIndex}, '${safeOpportunityName}')`; // rowIndex 通常存在
+        const deleteButtonOnClick = `confirmDeleteOpportunity(${opp.rowIndex}, '${safeOpportunityName}')`;
 
         const typeConfig = typeConfigs.get(opp.opportunityType);
         const rowColor = typeConfig?.color || 'transparent';
 
-        // 【*** 修正 ***】
-        // 移除 "詳情", "事件", "會議" 按鈕
+        // --- 修正點 1: 移除編輯按鈕，保留刪除按鈕 ---
         html += `
             <tr style="--card-brand-color: ${rowColor};">
                 <td data-label="最後活動" class="col-last-activity">${formatDateTime(opp.effectiveLastActivity)}</td>
@@ -521,7 +470,6 @@ function renderOpportunitiesTable(opportunities) {
                 <td data-label="負責業務">${opp.assignee || '-'}</td>
                 <td data-label="目前階段">${stageDisplayName}</td>
                 <td data-label="操作" class="col-actions"><div class="action-buttons-container">
-                    <button class="action-btn small warn" onclick="${editButtonOnClick}">✏️ 編輯</button>
                     <button class="action-btn small danger" onclick="${deleteButtonOnClick}">🗑️ 刪除</button>
                 </div></td>
             </tr>`;
@@ -536,33 +484,36 @@ async function confirmDeleteOpportunity(rowIndex, opportunityName) {
         showNotification('無法刪除：缺少必要的紀錄索引。', 'error');
         return;
     }
-    const safeOpportunityName = opportunityName || '(未命名)'; // 保護
-    const message = `您確定要永久刪除機會案件 "${safeOpportunityName}" 嗎？\n此操作無法復原！`;
+    const safeOpportunityName = opportunityName || '(未命名)';
+    const message = `您確定要"永久刪除"\n機會案件 "${safeOpportunityName}" 嗎？\n此操作無法復原！!`;
 
     showConfirmDialog(message, async () => {
         showLoading('正在刪除...');
         try {
             const result = await authedFetch(`/api/opportunities/${rowIndex}`, { method: 'DELETE' });
-            // authedFetch 會處理成功訊息和頁面刷新
+            
             if (result.success) {
-                 // 【*** 移除衝突 ***】
-                 // 移除下面這行多餘的前端狀態管理，authedFetch 會處理刷新
-                 // opportunitiesData = opportunitiesData.filter(opp => opp.rowIndex !== rowIndex);
-                 // 【*** 移除結束 ***】
+                // --- 修正點 2: 移除手動顯示成功訊息 (避免重複) ---
+                // showNotification('刪除成功', 'success'); 
+                
+                // 獲取當前搜尋關鍵字，保持搜尋狀態
+                const searchInput = document.getElementById('opportunities-list-search');
+                const currentQuery = searchInput ? searchInput.value : '';
+                
+                // 重新載入列表資料，讓被刪除的項目消失
+                await loadOpportunities(currentQuery);
+                
             } else {
                  throw new Error(result.details || '刪除操作失敗');
             }
         } catch (error) {
-            // authedFetch 會顯示錯誤訊息，這裡可以不用重複顯示
             if (error.message !== 'Unauthorized') {
                  console.error('刪除機會失敗:', error);
-                 // 確保 loading 隱藏
-                 hideLoading();
-                 // 可以選擇顯示一個備用錯誤訊息
-                 // showNotification(`刪除失敗: ${error.message}`, 'error');
+                 // authedFetch 會處理錯誤提示
             }
         } finally {
-             // hideLoading 由 authedFetch 處理
+             // --- 修正點 3: 確保 Loading 視窗關閉 ---
+             hideLoading();
         }
     });
 }
@@ -582,7 +533,7 @@ function quickCreateMeeting(opportunityId) {
                     if (data.opportunityId === opportunityId) {
                         select.value = option.value;
                         if (typeof updateMeetingInfo === 'function') {
-                            updateMeetingInfo(); // 觸發自動填寫
+                            updateMeetingInfo();
                         }
                         break;
                     }
@@ -600,24 +551,18 @@ async function loadFollowUpPage() {
     if (!container) return;
     container.innerHTML = '<div class="loading show"><div class="spinner"></div><p>載入待追蹤清單中...</p></div>';
     try {
-        // 待追蹤列表現在直接從 dashboard API 獲取，且後端已計算好 effectiveLastActivity
         const result = await authedFetch('/api/dashboard');
         if (!result.success || !result.data) throw new Error(result.error || '無法獲取儀表板資料');
 
-        // 從儀表板資料中提取待追蹤列表
         const dashboardData = result.data;
-        const followUpBasicList = dashboardData.followUpList || []; // 這是包含 opp ID 和 activity 的列表
+        const followUpBasicList = dashboardData.followUpList || [];
+        const followUpFullList = followUpBasicList;
 
-        // 後端應已計算好活動時間並包含在 followUpList 中，直接渲染
-        const followUpFullList = followUpBasicList; // 假設後端資料結構已更新
-
-        // 排序 (確保後端已排序，此處為備用)
-        followUpFullList.sort((a, b) => (a.effectiveLastActivity || 0) - (b.effectiveLastActivity || 0)); // 按最舊活動排序
+        followUpFullList.sort((a, b) => (a.effectiveLastActivity || 0) - (b.effectiveLastActivity || 0));
 
         if (followUpFullList.length === 0) {
             container.innerHTML = '<div class="alert alert-success" style="padding: 2rem; text-align: center;">🎉 太棒了！目前沒有需要追蹤的機會案件。</div>';
         } else {
-            // 從 config.js 讀取天數閾值，提供預設值
             const thresholdDays = window.CRM_APP?.systemConfig?.FOLLOW_UP?.DAYS_THRESHOLD || 7;
             container.innerHTML = `<div class="dashboard-widget"><div class="widget-header"><h2 class="widget-title">待追蹤機會案件 (${followUpFullList.length})</h2></div><div class="widget-content"><div class="alert alert-warning">⚠️ 以下機會案件已超過 ${thresholdDays} 天未有新活動，建議盡快跟進。</div>${renderOpportunitiesTable(followUpFullList)}</div></div>`;
         }
