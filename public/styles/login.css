@@ -101,20 +101,22 @@ body {
     background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
     border-radius: var(--rounded-2xl) var(--rounded-2xl) 0 0;
 }
-.login-box h1 {
-    font-size: 2.2rem;
-    font-weight: 800;
-    margin-bottom: var(--spacing-2);
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+
+/* --- 【修改】LOGO 樣式 --- */
+.logo-container {
+    margin-bottom: var(--spacing-4);
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: var(--spacing-3);
 }
-.login-box h1 svg { width: 32px; height: 32px; color: var(--accent-blue); background: none; -webkit-text-fill-color: var(--accent-blue); }
+
+.login-logo {
+    width: 100%;
+    height: auto;
+    /* 【修改】尺寸縮小 50% (原 300px -> 150px) */
+    max-width: 180px; 
+    display: block;
+}
+
 .login-box p {
     font-size: 1rem;
     color: var(--text-secondary);
@@ -227,5 +229,4 @@ body {
 /* ==================== 響應式設計 ==================== */
 @media (max-width: 480px) {
     .login-box { padding: var(--spacing-6) var(--spacing-5); }
-    .login-box h1 { font-size: 1.6rem; }
 }

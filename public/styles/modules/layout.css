@@ -11,18 +11,19 @@
 /* 主要內容區域 */
 .main-content {
     flex: 1; 
-    margin-left: 280px;
+    /* 【修改】展開時的左邊距縮小為 200px (原 280px) */
+    margin-left: 200px;
     background: var(--primary-bg); 
     min-height: 100vh;
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     padding: var(--spacing-8);
 }
 
-/* ========== 【新增】收合狀態下主內容區的樣式 ========== */
+/* ========== 收合狀態下主內容區的樣式 ========== */
 .app-layout.sidebar-collapsed .main-content {
+    /* 【保持不變】收合時維持 80px */
     margin-left: 80px;
 }
-/* ========== 新增結束 ========== */
 
 .page-header {
     background: var(--secondary-bg);
@@ -85,7 +86,6 @@
     border-radius: var(--rounded-xl);
     padding: var(--spacing-6);
     box-shadow: var(--shadow-md);
-    /* 【最終修正】恢復 Flex 佈局，讓 header 和 content 能垂直排列 */
     display: flex;
     flex-direction: column;
 }
@@ -95,7 +95,6 @@
     align-items: center; 
     justify-content: space-between; 
     margin-bottom: var(--spacing-5);
-    /* 【最終修正】確保 header 不會被壓縮 */
     flex-shrink: 0;
 }
 
@@ -107,7 +106,6 @@
 }
 
 .widget-content { 
-    /* 【最終修正】恢復 flex-grow，但增加 min-height 以防止在動態渲染時塌陷 */
     flex-grow: 1;
     min-height: 1px;
 }

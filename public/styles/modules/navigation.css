@@ -3,7 +3,7 @@
 
 /* 側邊欄 */
 .sidebar {
-    width: 280px;
+    width: 200px;
     background: var(--secondary-bg);
     border-right: 1px solid var(--border-color);
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -14,39 +14,28 @@
     flex-direction: column;
 }
 
+/* LOGO 區域維持置中 (您要求的 LOGO 不動) */
 .sidebar-header {
     padding: var(--spacing-6);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center; /* LOGO 保持水平置中 */
     transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    font-weight: 700;
-    font-size: var(--font-size-xl);
-    color: var(--text-primary);
-}
-
-.logo-icon {
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-    border-radius: var(--rounded-lg);
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    width: 100%;
 }
 
-.logo-icon svg { 
-    width: 20px; 
-    height: 20px; 
-    color: white; 
+.sidebar-logo {
+    width: 100%;
+    max-width: 120px; 
+    height: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
 }
 
 .sidebar-nav { 
@@ -69,11 +58,18 @@
     margin-bottom: var(--spacing-1); 
 }
 
+/* --- 【修改】導航連結樣式 --- */
 .nav-link {
     display: flex; 
     align-items: center; 
     gap: var(--spacing-3);
-    padding: var(--spacing-4); 
+    
+    /* 上/下 padding 維持 var(--spacing-4) = 16px
+       右 padding 維持 12px
+       左 padding 改為 22px (原 12px + 10px 位移) 
+    */
+    padding: var(--spacing-4) 12px var(--spacing-4) 22px; 
+    
     border-radius: var(--rounded-lg);
     text-decoration: none; 
     color: var(--text-secondary);
@@ -81,6 +77,9 @@
     position: relative; 
     font-weight: 500;
     height: 56px;
+    
+    /* 確保靠左對齊 (這是預設值，但寫出來更明確) */
+    justify-content: flex-start; 
 }
 
 .nav-link:hover { 
@@ -96,18 +95,16 @@
     font-weight: 600; 
 }
 
-/* 【根本原因修正】直接為 svg.nav-icon 設定樣式 */
 svg.nav-icon { 
-    min-width: 20px; /* 確保不被過度壓縮 */
+    min-width: 20px; 
     width: 20px; 
     height: 20px; 
     transition: all 0.2s ease;
-    color: var(--text-secondary); /* 預設顏色 */
+    color: var(--text-secondary); 
 }
 .nav-item.active .nav-link svg.nav-icon {
-    color: white; /* 啟用時的圖示顏色 */
+    color: white; 
 }
-
 
 /* 側邊欄釘選與收合狀態樣式 */
 .sidebar-footer {
@@ -138,8 +135,7 @@ svg.nav-icon {
     color: var(--text-primary);
 }
 
-
-/* --- 收合狀態下的核心樣式 --- */
+/* ==================== 收合狀態下的核心樣式 ==================== */
 .app-layout.sidebar-collapsed .sidebar {
     width: 80px;
 }
@@ -149,13 +145,16 @@ svg.nav-icon {
     padding-right: 0;
     justify-content: center;
 }
+
+.app-layout.sidebar-collapsed .sidebar-logo {
+    max-width: 40px; 
+}
+
 .app-layout.sidebar-collapsed #sidebar-pin-toggle {
     justify-content: center;
 }
 
-
-.app-layout.sidebar-collapsed .sidebar .nav-text,
-.app-layout.sidebar-collapsed .sidebar .logo-text {
+.app-layout.sidebar-collapsed .sidebar .nav-text {
     opacity: 0;
     width: 0;
     overflow: hidden;
@@ -163,47 +162,41 @@ svg.nav-icon {
     transition: opacity 0.1s ease, width 0.2s ease;
 }
 
-.app-layout.sidebar-collapsed .sidebar .logo {
-    justify-content: center;
+/* 收合時的連結樣式修正 
+   (收合時必須置中，且不需要額外的左移，否則圖示會歪掉)
+*/
+.app-layout.sidebar-collapsed .nav-link {
+    padding: 0; /* 重置 padding */
+    justify-content: center; /* 強制置中 */
 }
 
-/* ========== 【最終對齊修正 - 正確結構版】 ========== */
-/* 1. 在收合時，重置連結本身的樣式 */
-.app-layout.sidebar-collapsed .nav-link {
-    padding: 0;
-    justify-content: center;
-}
 .app-layout.sidebar-collapsed .nav-item.active .nav-link {
     background: transparent;
     box-shadow: none;
 }
 .app-layout.sidebar-collapsed .nav-link:hover {
-    background: transparent; /* 取消懸浮背景 */
+    background: transparent; 
     transform: none;
 }
 
-/* 2. 將 svg.nav-icon 作為容器，設定固定尺寸與 padding */
+/* 圖示樣式修正 */
 .app-layout.sidebar-collapsed svg.nav-icon {
     width: 40px;
     height: 40px;
-    padding: 10px; /* 內部留白，讓圖示看起來變小 */
+    padding: 10px; 
     border-radius: var(--rounded-lg);
     flex-shrink: 0;
 }
 
-/* 3. 將啟用狀態的背景色，應用在 svg.nav-icon 上 */
 .app-layout.sidebar-collapsed .nav-item.active svg.nav-icon {
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
     color: white;
-    padding: 10px; /* 增加 padding，讓圖示變得更小 (12px 視覺大小) */
+    padding: 10px; 
 }
 
-/* 4. 為非啟用圖示也增加一個懸浮背景 */
 .app-layout.sidebar-collapsed .nav-link:hover svg.nav-icon {
     background: var(--glass-bg);
 }
-/* ========== 最終修正結束 ========== */
-s
 
 /* 主題切換按鈕 */
 .theme-toggle {
