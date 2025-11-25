@@ -2,11 +2,9 @@
 
 const BaseReader = require('./base-reader');
 
-// --- 【最終修正核心】 ---
-// 建立一個完整的、包含新舊欄位對應的「超級字典」。
-// 這是確保新舊資料共存、關聯性正確、排序正確的唯一真理來源。
+// 欄位映射表
 const HEADER_TO_KEY_MAP = {
-    // Common Fields (for New Sheets)
+    // Common Fields
     '事件ID': 'eventId',
     '事件名稱': 'eventName',
     '關聯機會ID': 'opportunityId',
@@ -21,8 +19,9 @@ const HEADER_TO_KEY_MAP = {
     '客戶提問': 'clientQuestions',
     '客戶情報': 'clientIntelligence',
     '備註': 'eventNotes',
+    '修訂版次': 'editCount', // <--- 新增對應
 
-    // IOT Specific Fields
+    // IOT Specific
     '設備規模': 'iot_deviceScale',
     '生產線特徵': 'iot_lineFeatures',
     '生產現況': 'iot_productionStatus',
@@ -32,11 +31,11 @@ const HEADER_TO_KEY_MAP = {
     '痛點分析與對策': 'iot_painPointAnalysis',
     '系統架構': 'iot_systemArchitecture',
 
-    // DT Specific Fields
+    // DT Specific
     '加工類型': 'dt_processingType',
     '加工產業別': 'dt_industry',
 
-    // --- Legacy Fields Mapping (舊總表欄位的翻譯規則) ---
+    // Legacy Fields Mapping
     '下單機率': 'orderProbability',
     '可能下單數量': 'potentialQuantity',
     '銷售管道': 'salesChannel',
@@ -52,26 +51,19 @@ const HEADER_TO_KEY_MAP = {
     '客戶對FANUC期望': 'fanucExpectation',
     '痛點補充說明': 'eventNotes'
 };
-// --- 【修正核心結束】 ---
-
 
 class EventLogReader extends BaseReader {
     constructor(sheets) {
         super(sheets);
-        // 這兩個 require 必須放在 constructor 內部以避免循環依賴
         const OpportunityReader = require('./opportunity-reader');
         const CompanyReader = require('./company-reader');
         this.opportunityReader = new OpportunityReader(sheets);
         this.companyReader = new CompanyReader(sheets);
     }
 
-    /**
-     * [相容層] 讀取並正規化舊的「事件紀錄總表」資料
-     * @private
-     */
     async _fetchLegacyEventData() {
         try {
-            const range = `事件紀錄總表!A:Y`; // 舊工作表的範圍
+            const range = `事件紀錄總表!A:Y`;
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.config.SPREADSHEET_ID,
                 range: range,
@@ -88,7 +80,7 @@ class EventLogReader extends BaseReader {
             ];
 
             return rows.slice(1).map((row, index) => {
-                const log = { rowIndex: index + 2, eventType: 'legacy' };
+                const log = { rowIndex: index + 2, eventType: 'legacy', editCount: 1 }; // 舊資料預設版次為 1
                 
                 legacyHeadersInOrder.forEach((header, i) => {
                     const key = HEADER_TO_KEY_MAP[header];
@@ -97,7 +89,7 @@ class EventLogReader extends BaseReader {
                     }
                 });
                 
-                const lastUpdateTime = row[24]; // 假設最後更新時間在 Y 欄
+                const lastUpdateTime = row[24];
                 log.lastModifiedTime = lastUpdateTime || log.createdTime;
                 log.iot_deviceScale = log.potentialQuantity || log.hardwareScale;
 
@@ -113,10 +105,6 @@ class EventLogReader extends BaseReader {
         }
     }
 
-    /**
-     * 內部輔助函式，用於從單一新版事件工作表讀取資料 (已使用映射表重構)
-     * @private
-     */
     async _fetchEventData(eventType, sheetName, specificFields = []) {
         const commonFields = this.config.EVENT_LOG_COMMON_FIELDS;
         const allHeaders = [...commonFields, ...specificFields];
@@ -157,9 +145,6 @@ class EventLogReader extends BaseReader {
         }
     }
 
-    /**
-     * 取得所有類型的事件紀錄，並將新舊資料合併
-     */
     async getEventLogs() {
         const cacheKey = 'eventLogs';
         const now = Date.now();
@@ -188,9 +173,6 @@ class EventLogReader extends BaseReader {
         return allLogs;
     }
 
-    /**
-     * 根據 ID 取得單筆事件紀錄
-     */
     async getEventLogById(eventId) {
         const allLogs = await this.getEventLogs();
         const log = allLogs.find(log => log.eventId === eventId);
@@ -198,7 +180,6 @@ class EventLogReader extends BaseReader {
         if (!log) return null;
 
         try {
-            // 並行獲取關聯資料以提升效能
             const [allOpportunities, allCompanies] = await Promise.all([
                 this.opportunityReader.getOpportunities(),
                 this.companyReader.getCompanyList()

@@ -1,4 +1,4 @@
-// config.js (已加入追蹤欄位與封存狀態)
+// config.js (已加入修訂版次欄位)
 module.exports = {
     // 環境設定
     NODE_ENV: process.env.NODE_ENV || 'development',
@@ -15,7 +15,7 @@ module.exports = {
     TEAM_CALENDAR_NAME: 'TFC CRM測試日曆',
     TIMEZONE: 'Asia/Taipei',
     
-    // 工作表名稱定義 (新增四種事件紀錄表)
+    // 工作表名稱定義
     SHEETS: {
         CONTACTS: '原始名片資料',
         CONTACT_LIST: '聯絡人總表',
@@ -25,7 +25,7 @@ module.exports = {
         SYSTEM_CONFIG: '系統設定工作表',
         CALENDAR_SYNC: '日曆整合工作表',
         
-        // --- 事件紀錄表 (已重構) ---
+        // --- 事件紀錄表 ---
         EVENT_LOGS_GENERAL: '事件紀錄_一般',
         EVENT_LOGS_IOT: '事件紀錄_IOT',
         EVENT_LOGS_DT: '事件紀錄_DT',
@@ -36,11 +36,12 @@ module.exports = {
         ANNOUNCEMENTS: '佈告欄'
     },
     
-    // --- 【新增】定義四種事件的欄位結構 ---
+    // --- 事件紀錄欄位結構 (新增 '修訂版次') ---
     EVENT_LOG_COMMON_FIELDS: [
         '事件ID', '事件名稱', '關聯機會ID', '關聯公司ID', '建立者', 
         '建立時間', '最後修改時間', '我方與會人員', '客戶與會人員', 
-        '會議地點', '會議內容', '客戶提問', '客戶情報', '備註'
+        '會議地點', '會議內容', '客戶提問', '客戶情報', '備註',
+        '修訂版次' // <--- 新增此欄位
     ],
     EVENT_LOG_IOT_FIELDS: [
         '設備規模', '生產線特徵', '生產現況', 'IoT現況', '痛點分類',
@@ -49,7 +50,6 @@ module.exports = {
     EVENT_LOG_DT_FIELDS: [
         '設備規模', '加工類型', '加工產業別'
     ],
-    // DX 與 General 共用共通欄位，無需額外定義專屬欄位
 
     // 佈告欄欄位
     ANNOUNCEMENT_FIELDS: {
@@ -73,12 +73,12 @@ module.exports = {
         CREATOR: 5
     },
 
-    // 原始名片資料欄位對應 (25欄，Y欄為狀態)
+    // 原始名片資料欄位對應
     CONTACT_FIELDS: {
         TIME: 0, NAME: 1, COMPANY: 2, POSITION: 3, DEPARTMENT: 4, PHONE: 5, MOBILE: 6, FAX: 7, EMAIL: 8, WEBSITE: 9, ADDRESS: 10, CONFIDENCE: 11, PROCESSING_TIME: 12, DRIVE_LINK: 13, SMART_FILENAME: 14, LOCAL_PATH: 15, RAW_TEXT: 16, AI_PARSING: 17, AI_CONFIDENCE: 18, DATA_SOURCE: 19, LINE_USER_ID: 20, USER_NICKNAME: 21, USER_TAG: 22, ORIGINAL_ID: 23, STATUS: 24
     },
     
-    // 機會案件工作表欄位 (擴充至 24 欄)
+    // 機會案件工作表欄位
     OPPORTUNITY_FIELDS: [
         '機會ID', '機會名稱', '客戶公司', '主要聯絡人', '聯絡人電話',
         '負責業務', '機會種類', '機會來源', '目前階段', '建立時間', 
@@ -86,46 +86,46 @@ module.exports = {
         '最後更新時間', '備註', '最後變更者',
         '階段歷程',
         '母機會ID',
-        '下單機率',      // <-- (19) T欄
-        '可能下單規格',  // <-- (20) U欄
-        '可能銷售管道',  // <-- (21) V欄
-        '設備規模',      // <-- (22) W欄
-        '機會價值類型' // <-- 【*** 新增 (23) X欄 ***】
+        '下單機率',
+        '可能下單規格',
+        '可能銷售管道',
+        '設備規模',
+        '機會價值類型'
     ],
     
-    // 互動紀錄工作表欄位增加至 13 欄
+    // 互動紀錄工作表欄位
     INTERACTION_FIELDS: [
         '互動ID', '機會ID', '互動時間', '互動類型', '事件標題', '內容摘要',
         '參與人員', '下次行動', '附件連結', 'Calendar事件ID', '記錄人', '建立時間',
         '公司ID'
     ],
     
-    // 系統設定工作表欄位 (5欄)
+    // 系統設定工作表欄位
     SYSTEM_CONFIG_FIELDS: [
         '設定類型', '設定項目', '顯示順序', '啟用狀態', '備註'
     ],
     
-    // 聯絡人總表欄位 (13欄)
+    // 聯絡人總表欄位
     CONTACT_LIST_FIELDS: [
         '聯絡人ID', '來源ID', '姓名', '公司ID', '部門', 
         '職稱', '手機', '公司電話', 'Email', '建立時間', '最後更新時間',
         '建立者', '最後變更者'
     ],
     
-    // 公司總表欄位增加至 13 欄
+    // 公司總表欄位
     COMPANY_LIST_FIELDS: [
         '公司ID', '公司名稱', '公司電話', '地址', '建立時間', '最後更新時間',
         '縣市', '建立者', '最後變更者', '公司簡介',
         '公司類型', '客戶階段', '互動評級'
     ],
     
-    // 日曆整合工作表欄位 (8欄)
+    // 日曆整合工作表欄位
     CALENDAR_SYNC_FIELDS: [
         '紀錄ID', '機會ID', 'Calendar事件ID', '事件標題',
         '開始時間', '結束時間', '建立時間', '建立者'
     ],
     
-    // 更新週間業務工作表欄位以匹配新的 Schema
+    // 週間業務工作表欄位
     WEEKLY_BUSINESS_FIELDS: [
         '日期', 'Week ID', '分類', '主題', '參與人員', 
         '重點摘要', '待辦事項', '建立時間', '最後更新時間', 
@@ -189,7 +189,7 @@ module.exports = {
         DATA_UPDATED: '資料更新成功'
     },
 
-    // ===== 認證相關設定 (更新 HASH) =====
+    // ===== 認證相關設定 =====
     AUTH: {
         JWT_SECRET: process.env.JWT_SECRET,
         JWT_EXPIRES_IN: '8h'
