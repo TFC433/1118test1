@@ -1,4 +1,4 @@
-// config.js (已加入修訂版次欄位)
+// config.js (新增 PERSONAL_CALENDAR_ID)
 module.exports = {
     // 環境設定
     NODE_ENV: process.env.NODE_ENV || 'development',
@@ -11,7 +11,12 @@ module.exports = {
     DRIVE_FOLDER_ID: process.env.DRIVE_FOLDER_ID || '1Y_jbl2AmDIcLcuSKhLysKUheXz4SVbuG',
     
     // Google Calendar 設定
+    // 系統主要日曆 (寫入目標)
     CALENDAR_ID: process.env.CALENDAR_ID || 'c66cf51d93c97155e3f5286a5a454af560a300b256d9ca635a8c6eb52a62c5c7@group.calendar.google.com',
+    
+    // 【新增】個人日曆 (唯讀來源，用於週報顯示)
+    PERSONAL_CALENDAR_ID: process.env.PERSONAL_CALENDAR_ID || '154ed854e330e4e20bc437ddee1f66ee10e5aa9db73c2a4e61902fb0571cbc2f@group.calendar.google.com',
+
     TEAM_CALENDAR_NAME: 'TFC CRM測試日曆',
     TIMEZONE: 'Asia/Taipei',
     
@@ -41,7 +46,7 @@ module.exports = {
         '事件ID', '事件名稱', '關聯機會ID', '關聯公司ID', '建立者', 
         '建立時間', '最後修改時間', '我方與會人員', '客戶與會人員', 
         '會議地點', '會議內容', '客戶提問', '客戶情報', '備註',
-        '修訂版次' // <--- 新增此欄位
+        '修訂版次' 
     ],
     EVENT_LOG_IOT_FIELDS: [
         '設備規模', '生產線特徵', '生產現況', 'IoT現況', '痛點分類',

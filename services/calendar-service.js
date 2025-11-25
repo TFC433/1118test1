@@ -26,12 +26,10 @@ class CalendarService {
 
             if (eventData.isAllDay) {
                 // 全天事件
-                // 【核心修正】使用設定的時區來轉換日期，避免 UTC 偏移導致日期少一天
                 const startDateStr = new Date(eventData.startTime).toLocaleDateString('en-CA', { 
                     timeZone: this.config.TIMEZONE 
                 });
                 
-                // Google Calendar 全天事件 end date 必須比 start 晚一天
                 const startDate = new Date(eventData.startTime);
                 const endDateDate = new Date(startDate);
                 endDateDate.setDate(endDateDate.getDate() + 1);
@@ -102,6 +100,40 @@ class CalendarService {
         } catch (error) {
             console.error('❌ [CalendarService] 讀取Calendar事件失敗:', error);
             return { todayCount: 0, weekCount: 0, todayEvents: [], allEvents: [] };
+        }
+    }
+
+    /**
+     * 【修改】取得指定期間的所有日曆事件 (支援指定 calendarId)
+     * @param {Date} startDate - 開始時間
+     * @param {Date} endDate - 結束時間
+     * @param {string} [calendarId] - (可選) 指定要查詢的日曆ID，若未填則使用預設系統日曆
+     * @returns {Promise<Array>} - 事件列表
+     */
+    async getEventsForPeriod(startDate, endDate, calendarId = null) {
+        // 決定要使用的 Calendar ID
+        const targetCalendarId = calendarId || this.config.CALENDAR_ID;
+        
+        if (!targetCalendarId) {
+            console.warn('⚠️ [CalendarService] 未設定 Calendar ID，跳過查詢。');
+            return [];
+        }
+
+        try {
+            // console.log(`📅 [CalendarService] 查詢日曆事件 (${targetCalendarId}): ${startDate.toISOString()} - ${endDate.toISOString()}`);
+            const response = await this.calendar.events.list({
+                calendarId: targetCalendarId,
+                timeMin: startDate.toISOString(),
+                timeMax: endDate.toISOString(),
+                singleEvents: true,
+                orderBy: 'startTime',
+            });
+            
+            return response.data.items || [];
+        } catch (error) {
+            // 避免特定日曆錯誤影響整個流程 (例如權限不足或ID錯誤)
+            console.warn(`⚠️ [CalendarService] 讀取日曆 (${targetCalendarId}) 失敗:`, error.message);
+            return [];
         }
     }
 

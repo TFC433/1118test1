@@ -1,27 +1,19 @@
-// services/weekly-business-service.js (已優化效能)
+// services/weekly-business-service.js (已優化效能 & 修正：只抓取個人日曆)
 
 /**
  * 專門負責處理與「週間業務」相關的業務邏輯
  */
 class WeeklyBusinessService {
-    /**
-     * @param {object} services - 包含所有已初始化服務的容器
-     */
     constructor(services) {
         this.weeklyBusinessReader = services.weeklyBusinessReader;
         this.weeklyBusinessWriter = services.weeklyBusinessWriter;
         this.dateHelpers = services.dateHelpers;
         this.calendarService = services.calendarService;
+        this.config = services.config; 
     }
 
-    /**
-     * 【優化】獲取週間業務的摘要列表 (僅包含 weekId 和 summaryCount)
-     * @returns {Promise<Array<object>>}
-     */
     async getWeeklyBusinessSummaryList() {
         const summaryData = await this.weeklyBusinessReader.getWeeklySummary();
-
-        // 將 weekId 轉換為包含 title 和 dateRange 的完整物件
         const weeksList = summaryData.map(summary => {
             const weekInfo = this.dateHelpers.getWeekInfo(summary.weekId);
             return {
@@ -32,7 +24,6 @@ class WeeklyBusinessService {
             };
         });
 
-        // 確保即使沒有任何紀錄，也回傳本週的空摘要
         if (weeksList.length === 0) {
             const currentWeekId = this.dateHelpers.getWeekId(new Date());
             const currentWeekInfo = this.dateHelpers.getWeekInfo(currentWeekId);
@@ -44,62 +35,100 @@ class WeeklyBusinessService {
              });
         }
 
-        return weeksList.sort((a, b) => b.id.localeCompare(a.id)); // 保持按週次倒序
+        return weeksList.sort((a, b) => b.id.localeCompare(a.id)); 
     }
 
-    /**
-     * 【優化】獲取單一週的詳細資料 (包含假日和該週紀錄)
-     * @param {string} weekId
-     * @returns {Promise<object>}
-     */
     async getWeeklyDetails(weekId) {
         console.log(`📊 [WeeklyBusinessService] 獲取週次 ${weekId} 的詳細資料...`);
-        // 1. 獲取該週的日期基本資訊
         const weekInfo = this.dateHelpers.getWeekInfo(weekId);
-
-        // 2. 獲取該週的業務紀錄 (從 Reader)
         const entriesForWeek = await this.weeklyBusinessReader.getEntriesForWeek(weekId);
         console.log(`   - 從 Reader 獲取了 ${entriesForWeek.length} 筆 ${weekId} 的紀錄`);
 
-        // 3. 【只查詢當週假日】非同步獲取該週的假日資訊
-        const firstDay = new Date(weekInfo.days[0].date + 'T00:00:00Z'); //確保UTC
-        const lastDay = new Date(weekInfo.days[weekInfo.days.length - 1].date + 'T00:00:00Z'); //確保UTC
-        // 查詢範圍需要包含最後一天
-        const endQueryDate = new Date(lastDay.getTime() + 24 * 60 * 60 * 1000);
+        const firstDay = new Date(weekInfo.days[0].date + 'T00:00:00Z'); 
+        const lastDay = new Date(weekInfo.days[weekInfo.days.length - 1].date + 'T00:00:00Z'); 
+        const endQueryDate = new Date(lastDay.getTime() + 24 * 60 * 60 * 1000); 
 
-        console.log(`   - 查詢 ${weekId} 的假日範圍: ${firstDay.toISOString().split('T')[0]} 到 ${endQueryDate.toISOString().split('T')[0]}`);
-        const holidays = await this.calendarService.getHolidaysForPeriod(firstDay, endQueryDate);
-        console.log(`   - ${weekId} 查詢到 ${holidays.size} 個假日`);
+        // --- 【核心修正】只查詢國定假日與個人日曆 ---
+        // 移除對 this.config.CALENDAR_ID (系統日曆) 的查詢
+        const queries = [
+            this.calendarService.getHolidaysForPeriod(firstDay, endQueryDate), // 0: 國定假日
+        ];
 
+        // 如果有設定個人日曆，加入查詢
+        if (this.config.PERSONAL_CALENDAR_ID) {
+            queries.push(
+                this.calendarService.getEventsForPeriod(firstDay, endQueryDate, this.config.PERSONAL_CALENDAR_ID)
+            );
+        }
 
-        // 4. 將假日資訊附加到 weekInfo 的 days 陣列中
+        const results = await Promise.all(queries);
+        const holidays = results[0];
+        const personalEvents = results[1] || []; // 個人行程
+
+        // 合併結果 (現在只剩個人行程)
+        const allCalendarEvents = [...personalEvents];
+
+        console.log(`   - ${weekId} 查詢到 ${holidays.size} 個假日，${personalEvents.length} 個個人行程`);
+
+        // 整理日曆事件
+        const eventsByDay = {};
+        allCalendarEvents.forEach(event => {
+            const startVal = event.start.dateTime || event.start.date;
+            if (!startVal) return;
+
+            const eventDate = new Date(startVal);
+            const dateKey = eventDate.toLocaleDateString('en-CA', { timeZone: this.config.TIMEZONE });
+
+            if (!eventsByDay[dateKey]) eventsByDay[dateKey] = [];
+            
+            const isAllDay = !!event.start.date;
+            const timeStr = isAllDay 
+                ? '全天' 
+                : eventDate.toLocaleTimeString('zh-TW', { 
+                    timeZone: this.config.TIMEZONE, 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    hour12: false 
+                  });
+
+            eventsByDay[dateKey].push({
+                summary: event.summary,
+                isAllDay: isAllDay,
+                time: timeStr,
+                htmlLink: event.htmlLink
+            });
+        });
+
+        // 排序當日事件
+        Object.keys(eventsByDay).forEach(key => {
+            eventsByDay[key].sort((a, b) => {
+                if (a.isAllDay && !b.isAllDay) return -1;
+                if (!a.isAllDay && b.isAllDay) return 1;
+                return a.time.localeCompare(b.time);
+            });
+        });
+
         weekInfo.days.forEach(day => {
             if (holidays.has(day.date)) {
                 day.holidayName = holidays.get(day.date);
-                console.log(`   - 找到假日: ${day.date} - ${day.holidayName}`);
             }
+            day.calendarEvents = eventsByDay[day.date] || [];
         });
 
-        // 5. 組合最終結果
         const weekData = {
             id: weekId,
-            ...weekInfo, // 包含已附加假日資訊的 days 陣列
-            entries: entriesForWeek // 該週的詳細紀錄
+            ...weekInfo, 
+            entries: entriesForWeek 
         };
 
         return weekData;
     }
 
-    /**
-     * 產生「新增週報」時的選項 (邏輯不變，但依賴的 getWeeklyBusinessSummaryList 已優化)
-     * @returns {Promise<Array<object>>}
-     */
     async getWeekOptions() {
         const today = new Date();
         const prevWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-        // 使用優化後的摘要列表來檢查週次是否已存在
         const allWeeks = await this.getWeeklyBusinessSummaryList();
         const existingWeekIds = new Set(allWeeks.map(w => w.id));
 
@@ -116,11 +145,6 @@ class WeeklyBusinessService {
         return options;
     }
 
-    /**
-     * 建立一筆週間業務紀錄 (邏輯不變)
-     * @param {object} data
-     * @returns {Promise<object>}
-     */
     async createWeeklyBusinessEntry(data) {
         const entryDate = new Date(data.date);
         const weekId = this.dateHelpers.getWeekId(entryDate);
@@ -128,20 +152,12 @@ class WeeklyBusinessService {
         return this.weeklyBusinessWriter.createWeeklyBusinessEntry(fullData);
     }
 
-    /**
-     * 更新一筆週間業務紀錄 (邏輯不變)
-     * @param {string} recordId
-     * @param {object} data
-     * @returns {Promise<object>}
-     */
     async updateWeeklyBusinessEntry(recordId, data) {
         const entryDate = new Date(data.date);
         const weekId = this.dateHelpers.getWeekId(entryDate);
         const fullData = { ...data, weekId };
         return this.weeklyBusinessWriter.updateWeeklyBusinessEntry(recordId, fullData);
     }
-
-     // --- 原 getWeeklyBusinessByWeek 方法已移除 ---
 }
 
 module.exports = WeeklyBusinessService;

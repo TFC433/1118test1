@@ -1,17 +1,14 @@
-// views/scripts/weekly-business.js (V6.0 - Final Polish: Tags, Ghost Card, Green Holiday, Font Size)
-// 【*** V6.2 - 修正：僅為標題(Header)套用底色，移除儲存格(Cell)底色 ***】
+// views/scripts/weekly-business.js (V6.4 - Calendar Events: Pure Text, No Links, Title Only)
+// 【*** V6.4 - 修正：日曆事件只顯示標題，純文字，淺灰藍粗體 ***】
 
 let currentWeekData = null;
-let allWeeksSummary = []; // 現在只儲存摘要資訊
+let allWeeksSummary = []; 
 
-/**
- * 【優化】載入並渲染週間業務的主頁面 (列表頁)
- */
 async function loadWeeklyBusinessPage() {
     // 檢查是否有從儀表板跳轉的 weekId
     const targetWeekId = sessionStorage.getItem('navigateToWeekId');
     if (targetWeekId) {
-        sessionStorage.removeItem('navigateToWeekId'); // 用完後清除
+        sessionStorage.removeItem('navigateToWeekId'); 
         await CRM_APP.navigateTo('weekly-detail', { weekId: targetWeekId });
         return;
     }
@@ -33,9 +30,6 @@ async function loadWeeklyBusinessPage() {
     }
 }
 
-/**
- * 【優化】使用摘要資料渲染週次列表的畫面
- */
 function renderWeekListPage() {
     const container = document.getElementById('page-weekly-business');
 
@@ -83,7 +77,6 @@ function renderWeekListPage() {
     html += '</div></div>';
     container.innerHTML = html;
 
-    // --- 樣式注入 ---
     if (!document.getElementById('weekly-business-styles')) {
         const style = document.createElement('style');
         style.id = 'weekly-business-styles';
@@ -103,9 +96,6 @@ function renderWeekListPage() {
     }
 }
 
-/**
- * 導航到指定週次的詳細頁面
- */
 async function navigateToWeeklyDetail(weekId) {
     const container = document.getElementById('page-weekly-business');
     container.innerHTML = `<div class="loading show"><div class="spinner"></div><p>正在載入 ${weekId} 的週報詳情中...</p></div>`;
@@ -128,9 +118,6 @@ async function navigateToWeeklyDetail(weekId) {
     }
 }
 
-/**
- * 渲染週間業務的詳細/編輯模式畫面
- */
 function renderWeeklyDetailView() {
     const container = document.getElementById('page-weekly-business');
 
@@ -190,11 +177,24 @@ function renderWeeklyDetailView() {
                                 ${todayIndicator}
                             </div>
                             
-                            ${themes.map(theme => `
+                            ${themes.map(theme => {
+                                // 【*** 程式碼修改點：日曆事件 純文字模式 ***】
+                                let calendarEventsHtml = '';
+                                if (theme.value === 'IoT' && dayInfo.calendarEvents && dayInfo.calendarEvents.length > 0) {
+                                    calendarEventsHtml = `<div class="calendar-events-list">`;
+                                    dayInfo.calendarEvents.forEach(evt => {
+                                       // 只顯示標題，使用 div 強制換行
+                                       calendarEventsHtml += `<div class="calendar-text-item" title="日曆行程">📅 ${evt.summary}</div>`;
+                                    });
+                                    calendarEventsHtml += `<div class="calendar-separator"></div></div>`;
+                                }
+                                
+                                return `
                                 <div class="grid-cell ${holidayClass} ${todayClass} ${theme.value.toLowerCase()}" id="cell-${dayInfo.dayIndex}-${theme.value}">
+                                    ${calendarEventsHtml}
                                     ${renderCellContent(daysData[dayInfo.dayIndex][theme.value], dayInfo, theme)}
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         `;
                     }).join('')}
                 </div>
@@ -203,7 +203,6 @@ function renderWeeklyDetailView() {
     `;
     container.innerHTML = html;
 
-    // --- 詳細頁樣式注入 (含新功能樣式) ---
     if (!document.getElementById('weekly-detail-styles')) {
         const style = document.createElement('style');
         style.id = 'weekly-detail-styles';
@@ -212,7 +211,6 @@ function renderWeeklyDetailView() {
             .grid-header, .grid-day-label { padding: 10px; font-weight: 600; text-align: center; background-color: var(--primary-bg); border-radius: 8px; line-height: 1.4; position: relative; }
             .grid-cell { background-color: var(--primary-bg); border-radius: 8px; padding: 10px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
             
-            /* Holiday (Green) & Today Styles */
             .grid-day-label.is-holiday { background: color-mix(in srgb, var(--accent-green) 10%, var(--primary-bg)); }
             .holiday-name { display: block; font-size: 0.75rem; font-weight: 700; color: var(--accent-green); margin-top: 4px; }
             .grid-cell.is-holiday { background: color-mix(in srgb, var(--accent-green) 10%, var(--primary-bg)); }
@@ -221,26 +219,13 @@ function renderWeeklyDetailView() {
             .today-indicator { display: block; font-size: 0.8rem; font-weight: 700; color: var(--accent-blue); margin-top: 4px; }
             .grid-cell.is-today { background: color-mix(in srgb, var(--accent-blue) 10%, var(--primary-bg)); border: 1px solid var(--accent-blue); }
 
-            /* --- 【*** CSS 修改點：僅保留 Header 顏色，移除 Cell 顏色 ***】 --- */
-            /* 標頭使用儀表板的實心顏色 */
-            .grid-header.iot {
-                background-color: var(--accent-blue);
-                color: white;
-            }
-            .grid-header.dt {
-                background-color: var(--accent-purple);
-                color: white;
-            }
+            .grid-header.iot { background-color: var(--accent-blue); color: white; }
+            .grid-header.dt { background-color: var(--accent-purple); color: white; }
             
-            /* (儲存格的淡色背景 .grid-cell.iot 和 .grid-cell.dt 已被移除) */
-            /* --- 【*** CSS 修改結束 ***】 --- */
-            
-            /* Entry Card Styles */
             .entry-card-read { position: relative; background: var(--secondary-bg); padding: 8px; border-radius: 4px; border-left: 3px solid var(--accent-blue); margin-bottom: 0; }
             .entry-card-read.category-iot { border-left-color: var(--accent-blue); }
             .entry-card-read.category-dt { border-left-color: var(--accent-purple); }
             
-            /* Holiday Card Style */
             .grid-cell.is-holiday .entry-card-read {
                 border-left-color: var(--accent-green);
                 background: color-mix(in srgb, var(--accent-green) 5%, var(--secondary-bg));
@@ -249,12 +234,10 @@ function renderWeeklyDetailView() {
             .entry-card-read .edit-btn { position: absolute; top: 5px; right: 5px; display: none; padding: 2px 6px; }
             .entry-card-read:hover .edit-btn { display: block; }
             
-            /* 【修改】標題字體加大 (1.0rem) */
             .entry-card-topic { font-weight: 600; font-size: 1.0rem; margin-bottom: 2px; line-height: 1.4; }
             .entry-card-participants { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
             .entry-card-summary { font-size: 0.85rem; white-space: pre-wrap; margin-top: 5px; color: var(--text-secondary); }
             
-            /* Ghost Card Style */
             .entry-card-ghost {
                 margin-top: auto;
                 border: 2px dashed var(--border-color);
@@ -285,48 +268,47 @@ function renderWeeklyDetailView() {
             }
             .entry-card-ghost:hover .ghost-plus { color: var(--accent-blue); }
 
-            /* 【新增】可點擊標籤樣式 (Tags/Pills) */
-            .participants-tags-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 4px 0;
-            }
-            .participant-tag {
-                display: inline-flex;
-                cursor: pointer;
-                user-select: none;
-            }
-            .participant-tag input[type="checkbox"] {
-                display: none; /* 隱藏原始 checkbox */
-            }
+            .participants-tags-container { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+            .participant-tag { display: inline-flex; cursor: pointer; user-select: none; }
+            .participant-tag input[type="checkbox"] { display: none; }
             .tag-text {
-                padding: 6px 14px;
-                border: 1px solid var(--border-color);
-                border-radius: 20px; /* 藥丸形狀 */
-                background-color: var(--secondary-bg);
-                color: var(--text-secondary);
-                font-size: 0.9rem;
-                font-weight: 500;
-                transition: all 0.2s ease;
+                padding: 6px 14px; border: 1px solid var(--border-color); border-radius: 20px;
+                background-color: var(--secondary-bg); color: var(--text-secondary); font-size: 0.9rem;
+                font-weight: 500; transition: all 0.2s ease;
             }
-            .participant-tag:hover .tag-text {
-                background-color: var(--glass-bg);
-                border-color: var(--accent-blue);
-            }
-            /* 選中狀態 */
+            .participant-tag:hover .tag-text { background-color: var(--glass-bg); border-color: var(--accent-blue); }
             .participant-tag input[type="checkbox"]:checked + .tag-text {
-                background-color: var(--accent-blue);
-                color: white;
-                border-color: var(--accent-blue);
+                background-color: var(--accent-blue); color: white; border-color: var(--accent-blue);
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
+
+            /* --- 【*** 程式碼修改點：純文字日曆事件 ***】 --- */
+            .calendar-events-list {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+            .calendar-text-item {
+                display: block;
+                font-size: 0.85rem;
+                color: #94a3b8; /* 淺灰藍色 (Slate-400) */
+                font-weight: 700; /* 粗體 */
+                padding: 2px 4px;
+                line-height: 1.4;
+            }
+            .calendar-separator {
+                height: 1px;
+                background-color: var(--border-color);
+                margin: 6px 0;
+                opacity: 0.5;
+            }
+            /* --- 【*** 樣式結束 ***】 --- */
         `;
         document.head.appendChild(style);
     }
 }
 
-// --- renderCellContent (使用幽靈卡片) ---
 function renderCellContent(entries, dayInfo, theme) {
     let contentHtml = entries.map(entry => {
         if (!entry || !entry.recordId) return '';
@@ -350,7 +332,6 @@ function renderCellContent(entries, dayInfo, theme) {
     return contentHtml;
 }
 
-// --- openWeeklyBusinessEditorPanel (使用可點擊標籤) ---
 function openWeeklyBusinessEditorPanel(dayInfo, theme, entry) {
     const isNew = !entry;
     const panelContainer = document.getElementById('slide-out-panel-container');
@@ -361,7 +342,6 @@ function openWeeklyBusinessEditorPanel(dayInfo, theme, entry) {
 
     const systemConfig = window.CRM_APP ? window.CRM_APP.systemConfig : {};
     if (systemConfig['團隊成員']) {
-        // 【修改】改為產生標籤式結構
         participantsTags += `<div class="participants-tags-container">`;
         systemConfig['團隊成員'].forEach(member => {
             const checked = selectedParticipants.has(member.note) ? 'checked' : '';
@@ -441,7 +421,6 @@ async function handleSaveWeeklyEntry(event) {
     const recordId = form.querySelector('[name="recordId"]').value;
     const isNew = !recordId;
 
-    // 由於我們只是改變了 checkbox 的樣式，底層仍是 checkbox，所以取值邏輯不變
     const selectedParticipants = Array.from(form.querySelectorAll('[name="participants"]:checked')).map(cb => cb.value);
 
     const entryData = {
@@ -474,7 +453,6 @@ async function handleSaveWeeklyEntry(event) {
     }
 }
 
-// ==================== 輔助函式 (保持不變) ====================
 function getWeekIdForDate(d) {
      if (!(d instanceof Date)) {
         try {
