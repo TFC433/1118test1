@@ -1,5 +1,4 @@
-// views/scripts/weekly-business.js (V6.4 - Calendar Events: Pure Text, No Links, Title Only)
-// 【*** V6.4 - 修正：日曆事件只顯示標題，純文字，淺灰藍粗體 ***】
+// views/scripts/weekly-business.js (V7.0 - 雙日曆分流顯示)
 
 let currentWeekData = null;
 let allWeeksSummary = []; 
@@ -178,16 +177,27 @@ function renderWeeklyDetailView() {
                             </div>
                             
                             ${themes.map(theme => {
-                                // 【*** 程式碼修改點：日曆事件 純文字模式 ***】
+                                // 【*** 關鍵修改：雙日曆渲染 ***】
                                 let calendarEventsHtml = '';
-                                if (theme.value === 'IoT' && dayInfo.calendarEvents && dayInfo.calendarEvents.length > 0) {
+                                
+                                // 左欄 (IoT)：渲染 dxCalendarEvents
+                                if (theme.value === 'IoT' && dayInfo.dxCalendarEvents && dayInfo.dxCalendarEvents.length > 0) {
                                     calendarEventsHtml = `<div class="calendar-events-list">`;
-                                    dayInfo.calendarEvents.forEach(evt => {
-                                       // 只顯示標題，使用 div 強制換行
-                                       calendarEventsHtml += `<div class="calendar-text-item" title="日曆行程">📅 ${evt.summary}</div>`;
+                                    dayInfo.dxCalendarEvents.forEach(evt => {
+                                       calendarEventsHtml += `<div class="calendar-text-item" title="DX行程">📅 ${evt.summary}</div>`;
                                     });
                                     calendarEventsHtml += `<div class="calendar-separator"></div></div>`;
                                 }
+                                
+                                // 右欄 (DT)：渲染 atCalendarEvents
+                                if (theme.value === 'DT' && dayInfo.atCalendarEvents && dayInfo.atCalendarEvents.length > 0) {
+                                    calendarEventsHtml = `<div class="calendar-events-list">`;
+                                    dayInfo.atCalendarEvents.forEach(evt => {
+                                       calendarEventsHtml += `<div class="calendar-text-item" title="AT行程">📅 ${evt.summary}</div>`;
+                                    });
+                                    calendarEventsHtml += `<div class="calendar-separator"></div></div>`;
+                                }
+                                // 【*** 修改結束 ***】
                                 
                                 return `
                                 <div class="grid-cell ${holidayClass} ${todayClass} ${theme.value.toLowerCase()}" id="cell-${dayInfo.dayIndex}-${theme.value}">
@@ -282,7 +292,6 @@ function renderWeeklyDetailView() {
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
 
-            /* --- 【*** 程式碼修改點：純文字日曆事件 ***】 --- */
             .calendar-events-list {
                 display: flex;
                 flex-direction: column;
@@ -303,7 +312,6 @@ function renderWeeklyDetailView() {
                 margin: 6px 0;
                 opacity: 0.5;
             }
-            /* --- 【*** 樣式結束 ***】 --- */
         `;
         document.head.appendChild(style);
     }

@@ -1,4 +1,4 @@
-// services/weekly-business-service.js (已優化效能 & 修正：只抓取個人日曆)
+// services/weekly-business-service.js (已優化效能 & 實作雙日曆過濾邏輯)
 
 /**
  * 專門負責處理與「週間業務」相關的業務邏輯
@@ -9,6 +9,7 @@ class WeeklyBusinessService {
         this.weeklyBusinessWriter = services.weeklyBusinessWriter;
         this.dateHelpers = services.dateHelpers;
         this.calendarService = services.calendarService;
+        this.systemReader = services.systemReader; // 【新增】注入 systemReader 以讀取篩選規則
         this.config = services.config; 
     }
 
@@ -48,71 +49,132 @@ class WeeklyBusinessService {
         const lastDay = new Date(weekInfo.days[weekInfo.days.length - 1].date + 'T00:00:00Z'); 
         const endQueryDate = new Date(lastDay.getTime() + 24 * 60 * 60 * 1000); 
 
-        // --- 【核心修正】只查詢國定假日與個人日曆 ---
-        // 移除對 this.config.CALENDAR_ID (系統日曆) 的查詢
+        // --- 1. 準備並行查詢 ---
         const queries = [
             this.calendarService.getHolidaysForPeriod(firstDay, endQueryDate), // 0: 國定假日
+            this.systemReader.getSystemConfig() // 1: 系統設定 (包含篩選規則)
         ];
 
-        // 如果有設定個人日曆，加入查詢
+        // DX 日曆 (原 Personal)
         if (this.config.PERSONAL_CALENDAR_ID) {
             queries.push(
                 this.calendarService.getEventsForPeriod(firstDay, endQueryDate, this.config.PERSONAL_CALENDAR_ID)
             );
+        } else {
+            queries.push(Promise.resolve([]));
+        }
+
+        // AT 日曆 (原 System)
+        if (this.config.CALENDAR_ID) {
+            queries.push(
+                this.calendarService.getEventsForPeriod(firstDay, endQueryDate, this.config.CALENDAR_ID)
+            );
+        } else {
+            queries.push(Promise.resolve([]));
         }
 
         const results = await Promise.all(queries);
         const holidays = results[0];
-        const personalEvents = results[1] || []; // 個人行程
+        const systemConfig = results[1] || {};
+        const rawDxEvents = results[2] || []; 
+        const rawAtEvents = results[3] || [];
 
-        // 合併結果 (現在只剩個人行程)
-        const allCalendarEvents = [...personalEvents];
+        // --- 2. 讀取篩選規則 ---
+        const rules = systemConfig['日曆篩選規則'] || [];
+        
+        // 解析 DX 屏蔽關鍵字 (預設值為空，完全依賴 Sheet)
+        const dxBlockRule = rules.find(r => r.value === 'DX_屏蔽關鍵字');
+        // *** 修正：如果不設定，預設為空字串，即不屏蔽任何資料 ***
+        const dxBlockKeywords = (dxBlockRule ? dxBlockRule.note : '').split(',').map(s => s.trim()).filter(Boolean);
 
-        console.log(`   - ${weekId} 查詢到 ${holidays.size} 個假日，${personalEvents.length} 個個人行程`);
+        // 解析 AT 轉移關鍵字
+        const atTransferRule = rules.find(r => r.value === 'AT_轉移關鍵字');
+        // *** 修正：如果不設定，預設為空字串，即不轉移任何資料 ***
+        const atTransferKeywords = (atTransferRule ? atTransferRule.note : '').split(',').map(s => s.trim()).filter(Boolean);
 
-        // 整理日曆事件
-        const eventsByDay = {};
-        allCalendarEvents.forEach(event => {
-            const startVal = event.start.dateTime || event.start.date;
-            if (!startVal) return;
+        console.log(`   - 日曆規則: DX屏蔽[${dxBlockKeywords}], AT轉移[${atTransferKeywords}]`);
 
-            const eventDate = new Date(startVal);
-            const dateKey = eventDate.toLocaleDateString('en-CA', { timeZone: this.config.TIMEZONE });
+        // --- 3. 執行過濾與分流 ---
+        const finalDxList = [];
+        const finalAtList = [];
 
-            if (!eventsByDay[dateKey]) eventsByDay[dateKey] = [];
+        // 處理 DX 來源 (Personal)
+        rawDxEvents.forEach(evt => {
+            const summary = evt.summary || '';
+            // 檢查是否包含屏蔽關鍵字
+            const shouldBlock = dxBlockKeywords.some(kw => summary.includes(kw));
+            if (!shouldBlock) {
+                finalDxList.push(evt);
+            }
+        });
+
+        // 處理 AT 來源 (System)
+        rawAtEvents.forEach(evt => {
+            const summary = evt.summary || '';
+            // 檢查是否包含轉移關鍵字
+            const shouldTransfer = atTransferKeywords.some(kw => summary.includes(kw));
+            if (shouldTransfer) {
+                finalDxList.push(evt); // 移到 DX 列表
+            } else {
+                finalAtList.push(evt); // 留在 AT 列表
+            }
+        });
+
+        console.log(`   - 處理後: DX日曆(${finalDxList.length}), AT日曆(${finalAtList.length})`);
+
+        // --- 4. 整理日曆事件到日期 ---
+        // 定義一個通用的整理函式
+        const organizeEventsByDay = (events) => {
+            const map = {};
+            events.forEach(event => {
+                const startVal = event.start.dateTime || event.start.date;
+                if (!startVal) return;
+
+                const eventDate = new Date(startVal);
+                const dateKey = eventDate.toLocaleDateString('en-CA', { timeZone: this.config.TIMEZONE });
+
+                if (!map[dateKey]) map[dateKey] = [];
+                
+                const isAllDay = !!event.start.date;
+                const timeStr = isAllDay 
+                    ? '全天' 
+                    : eventDate.toLocaleTimeString('zh-TW', { 
+                        timeZone: this.config.TIMEZONE, 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        hour12: false 
+                      });
+
+                map[dateKey].push({
+                    summary: event.summary,
+                    isAllDay: isAllDay,
+                    time: timeStr,
+                    htmlLink: event.htmlLink
+                });
+            });
             
-            const isAllDay = !!event.start.date;
-            const timeStr = isAllDay 
-                ? '全天' 
-                : eventDate.toLocaleTimeString('zh-TW', { 
-                    timeZone: this.config.TIMEZONE, 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: false 
-                  });
-
-            eventsByDay[dateKey].push({
-                summary: event.summary,
-                isAllDay: isAllDay,
-                time: timeStr,
-                htmlLink: event.htmlLink
+            // 排序
+            Object.keys(map).forEach(key => {
+                map[key].sort((a, b) => {
+                    if (a.isAllDay && !b.isAllDay) return -1;
+                    if (!a.isAllDay && b.isAllDay) return 1;
+                    return a.time.localeCompare(b.time);
+                });
             });
-        });
+            return map;
+        };
 
-        // 排序當日事件
-        Object.keys(eventsByDay).forEach(key => {
-            eventsByDay[key].sort((a, b) => {
-                if (a.isAllDay && !b.isAllDay) return -1;
-                if (!a.isAllDay && b.isAllDay) return 1;
-                return a.time.localeCompare(b.time);
-            });
-        });
+        const dxEventsByDay = organizeEventsByDay(finalDxList);
+        const atEventsByDay = organizeEventsByDay(finalAtList);
 
+        // --- 5. 注入資料到 weekInfo ---
         weekInfo.days.forEach(day => {
             if (holidays.has(day.date)) {
                 day.holidayName = holidays.get(day.date);
             }
-            day.calendarEvents = eventsByDay[day.date] || [];
+            // 分別注入兩個列表
+            day.dxCalendarEvents = dxEventsByDay[day.date] || [];
+            day.atCalendarEvents = atEventsByDay[day.date] || [];
         });
 
         const weekData = {

@@ -1,4 +1,4 @@
-// config.js (新增 PERSONAL_CALENDAR_ID)
+// config.js
 module.exports = {
     // 環境設定
     NODE_ENV: process.env.NODE_ENV || 'development',
@@ -11,11 +11,13 @@ module.exports = {
     DRIVE_FOLDER_ID: process.env.DRIVE_FOLDER_ID || '1Y_jbl2AmDIcLcuSKhLysKUheXz4SVbuG',
     
     // Google Calendar 設定
-    // 系統主要日曆 (寫入目標)
+    // -----------------------------------------------------------
+    // [AT 日曆] (原系統日曆) - 顯示於右側 (DT欄位)
     CALENDAR_ID: process.env.CALENDAR_ID || 'c66cf51d93c97155e3f5286a5a454af560a300b256d9ca635a8c6eb52a62c5c7@group.calendar.google.com',
     
-    // 【新增】個人日曆 (唯讀來源，用於週報顯示)
+    // [DX 日曆] (原個人日曆) - 顯示於左側 (IoT欄位)
     PERSONAL_CALENDAR_ID: process.env.PERSONAL_CALENDAR_ID || '154ed854e330e4e20bc437ddee1f66ee10e5aa9db73c2a4e61902fb0571cbc2f@group.calendar.google.com',
+    // -----------------------------------------------------------
 
     TEAM_CALENDAR_NAME: 'TFC CRM測試日曆',
     TIMEZONE: 'Asia/Taipei',

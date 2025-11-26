@@ -32,9 +32,9 @@ class SystemReader extends BaseReader {
             });
             
             const rows = response.data.values || [];
-            if (rows.length <= 1) return {};
             
             const settings = {};
+            
             // 初始化事件類型 (硬編碼部分，確保基本類型存在)
             if (!settings['事件類型']) {
                 settings['事件類型'] = [
@@ -45,25 +45,41 @@ class SystemReader extends BaseReader {
                     { value: 'legacy', note: '舊事件', order: 5, color: '#dc3545' }
                 ];
             }
+
+            // --- 【修正】日曆篩選規則的預設值 (只留結構，不留資料) ---
+            // 確保資料結構存在，但內容為空，完全依賴 Sheet 設定
+            if (!settings['日曆篩選規則']) {
+                settings['日曆篩選規則'] = []; 
+            }
+            // --- 修正結束 ---
             
-            rows.slice(1).forEach(row => {
-                // 【修改】解構賦值增加 category (I欄)
-                const [type, item, order, enabled, note, color, value2, value3, category] = row;
-                
-                if (enabled === 'TRUE' && type && item) {
-                    if (!settings[type]) settings[type] = [];
+            if (rows.length > 1) {
+                rows.slice(1).forEach(row => {
+                    // 【修改】解構賦值增加 category (I欄)
+                    const [type, item, order, enabled, note, color, value2, value3, category] = row;
                     
-                    settings[type].push({
-                        value: item,
-                        note: note || item,
-                        order: parseInt(order) || 99,
-                        color: color || null,
-                        value2: value2 || null, // G欄: 規格單價
-                        value3: value3 || null, // H欄: 行為模式
-                        category: category || '其他' // 【新增】I欄 分類，預設為 '其他'
-                    });
-                }
-            });
+                    if (enabled === 'TRUE' && type && item) {
+                        if (!settings[type]) settings[type] = [];
+                        
+                        const exists = settings[type].find(i => i.value === item);
+                        if (exists) {
+                            // 如果 Sheet 有設定，更新預設值
+                            exists.note = note || item;
+                            exists.order = parseInt(order) || 99;
+                        } else {
+                            settings[type].push({
+                                value: item,
+                                note: note || item,
+                                order: parseInt(order) || 99,
+                                color: color || null,
+                                value2: value2 || null, // G欄: 規格單價
+                                value3: value3 || null, // H欄: 行為模式
+                                category: category || '其他' // 【新增】I欄 分類，預設為 '其他'
+                            });
+                        }
+                    }
+                });
+            }
             
             // 依照順序欄位排序
             Object.keys(settings).forEach(type => settings[type].sort((a, b) => a.order - b.order));
