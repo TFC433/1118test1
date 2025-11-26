@@ -1,4 +1,4 @@
-// views/scripts/dashboard.js (V2.3 - Dashboard Widget: Sync Calendar Style)
+// views/scripts/dashboard.js (V2.4 - 儀表板週報 widget 支援雙日曆顯示)
 
 const dashboardManager = {
     kanbanRawData: {},
@@ -81,7 +81,6 @@ const dashboardManager = {
         }
     },
 
-    // ... (中間方法保持不變) ...
     _renderHeaderControls() {
         const container = document.querySelector('#kanban-widget .kanban-controls-container');
         if (!container) return;
@@ -300,7 +299,6 @@ const dashboardManager = {
             }
         }
         
-        // ... (announcement style 保持不變，省略) ...
         if (!document.getElementById('announcement-styles')) {
             const style = document.createElement('style');
             style.id = 'announcement-styles';
@@ -325,7 +323,7 @@ const dashboardManager = {
         localStorage.setItem('dashboardKanbanViewMode', this.kanbanViewMode);
         this.renderKanbanView();
     },
-    renderKanbanView: function() { /* ... (保持不變) ... */
+    renderKanbanView: function() { 
         const year = document.getElementById('kanban-year-filter')?.value || 'all';
         const type = document.getElementById('kanban-type-filter')?.value || 'all';
         const source = document.getElementById('kanban-source-filter')?.value || 'all';
@@ -392,7 +390,7 @@ const dashboardManager = {
             this.renderKanban(filteredKanbanData);
         }
     },
-    renderKanban: function(stagesData) { /* ... (保持不變) ... */
+    renderKanban: function(stagesData) { 
         const kanbanBoard = document.getElementById('kanban-board-container');
         const systemConfig = window.CRM_APP?.systemConfig || {};
         if (!kanbanBoard || !stagesData || !systemConfig['機會階段']) {
@@ -436,7 +434,7 @@ const dashboardManager = {
             kanbanBoardManager.initialize();
         }
     },
-    expandStage: function(stageId) { /* ... (保持不變) ... */
+    expandStage: function(stageId) {
         const stageData = this.kanbanRawData[stageId]; 
         if (!stageData) return;
         
@@ -468,7 +466,7 @@ const dashboardManager = {
             : '<div class="alert alert-error">無法渲染</div>';
         showModal('kanban-expand-modal');
     },
-    renderActivityFeed: function(feedData) { /* ... (保持不變) ... */
+    renderActivityFeed: function(feedData) {
         if (!feedData || feedData.length === 0) return '<div class="alert alert-info">尚無最新動態</div>';
         const iconMap = { '系統事件': '⚙️', '會議討論': '📅', '事件報告': '📝', '電話聯繫': '📞', '郵件溝通': '📧', 'new_contact': '👤' };
         let html = '<ul class="activity-feed-list">';
@@ -554,16 +552,28 @@ const dashboardManager = {
                             </div>
                             
                             ${themes.map(t => {
-                                // 【*** 修改重點：使用一致的 純文字+無連結+粗體灰藍 ***】
+                                // 【*** 修改重點：雙日曆分流顯示 (DX左/AT右) ***】
                                 let calendarEventsHtml = '';
-                                if (t.value === 'IoT' && dayInfo.calendarEvents && dayInfo.calendarEvents.length > 0) {
+                                
+                                // 左欄 (IoT)：顯示 DX 日曆 (dxCalendarEvents)
+                                if (t.value === 'IoT' && dayInfo.dxCalendarEvents && dayInfo.dxCalendarEvents.length > 0) {
                                     calendarEventsHtml = `<div class="calendar-events-list" style="margin-bottom:6px;">`;
-                                    dayInfo.calendarEvents.forEach(evt => {
+                                    dayInfo.dxCalendarEvents.forEach(evt => {
                                        // 使用 div (換行), 顏色 #94a3b8, 粗體
                                        calendarEventsHtml += `<div class="calendar-text-item" style="font-size:0.75rem; padding:1px 4px; margin-bottom:2px; color: #94a3b8; font-weight: 700;">📅 ${evt.summary}</div>`;
                                     });
                                     calendarEventsHtml += `<div class="calendar-separator" style="margin:4px 0;"></div></div>`;
                                 }
+
+                                // 右欄 (DT)：顯示 AT 日曆 (atCalendarEvents)
+                                if (t.value === 'DT' && dayInfo.atCalendarEvents && dayInfo.atCalendarEvents.length > 0) {
+                                    calendarEventsHtml = `<div class="calendar-events-list" style="margin-bottom:6px;">`;
+                                    dayInfo.atCalendarEvents.forEach(evt => {
+                                       calendarEventsHtml += `<div class="calendar-text-item" style="font-size:0.75rem; padding:1px 4px; margin-bottom:2px; color: #94a3b8; font-weight: 700;">📅 ${evt.summary}</div>`;
+                                    });
+                                    calendarEventsHtml += `<div class="calendar-separator" style="margin:4px 0;"></div></div>`;
+                                }
+                                // 【*** 修改結束 ***】
 
                                 return `<div class="topic-cell ${holidayClass} ${todayClass}" id="wb-dash-${dayIndex}-${t.value.toLowerCase()}">
                                     ${calendarEventsHtml}
