@@ -7,38 +7,93 @@ let currentUser = {
     displayName: '訪客',
     pictureUrl: null
 };
-let currentView = 'all'; // 'all' or 'mine'
+let currentView = 'all'; 
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. 初始化 LIFF (含本地模擬)
+    // 1. 初始化頁面狀態：先隱藏內容，只顯示 Header
+    toggleContentVisibility(false);
+
+    // 2. 初始化 LIFF
     await initLIFF();
 
-    // 2. 綁定事件
+    // 3. 綁定事件
     bindEvents();
-
-    // 3. 載入資料
-    loadLeadsData();
+    
+    // 注意：不再直接呼叫 loadLeadsData()，改由登入成功後觸發
 });
 
+function toggleContentVisibility(show) {
+    const controls = document.querySelector('.controls-section');
+    const main = document.querySelector('.leads-container');
+    const loginPrompt = document.getElementById('login-prompt'); // 稍後會在 HTML 加入此元素
+
+    if (show) {
+        if(controls) controls.style.display = 'block';
+        if(main) main.style.display = 'block';
+        if(loginPrompt) loginPrompt.style.display = 'none';
+    } else {
+        if(controls) controls.style.display = 'none';
+        if(main) main.style.display = 'none';
+        // 如果沒有 loginPrompt 元素，我們動態建立一個
+        if (!loginPrompt) createLoginPrompt();
+        else loginPrompt.style.display = 'flex';
+    }
+}
+
+function createLoginPrompt() {
+    const promptDiv = document.createElement('div');
+    promptDiv.id = 'login-prompt';
+    promptDiv.className = 'empty-state'; // 重用樣式
+    promptDiv.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; padding: 20px; text-align: center;';
+    
+    promptDiv.innerHTML = `
+        <div class="empty-icon" style="font-size: 5rem; margin-bottom: 20px;">🔒</div>
+        <h2 style="margin-bottom: 10px; color: var(--text-main);">請先登入</h2>
+        <p style="color: var(--text-sub); margin-bottom: 20px;">此頁面僅限授權成員存取<br>請點擊右上角或下方的按鈕登入 LINE</p>
+        <button class="login-btn" onclick="liff.login()" style="padding: 10px 30px; font-size: 1rem;">LINE 登入</button>
+    `;
+    
+    // 插入到 header 之後
+    const header = document.querySelector('.main-header');
+    if(header && header.parentNode) {
+        header.parentNode.insertBefore(promptDiv, header.nextSibling);
+    }
+}
+
+function showAccessDenied(userId) {
+    const promptDiv = document.getElementById('login-prompt');
+    if (promptDiv) {
+        promptDiv.innerHTML = `
+            <div class="empty-icon" style="font-size: 5rem; margin-bottom: 20px; color: var(--accent-red, #ef4444);">⛔</div>
+            <h2 style="margin-bottom: 10px; color: var(--text-main);">未授權的帳號</h2>
+            <p style="color: var(--text-sub); margin-bottom: 20px;">
+                您的 LINE ID 尚未被加入系統白名單。<br>
+                請複製下方 ID 並傳送給管理員申請開通：
+            </p>
+            <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; font-family: monospace; user-select: all; margin-bottom: 20px;">
+                ${userId}
+            </div>
+            <button class="action-btn" onclick="liff.logout(); location.reload();">登出並切換帳號</button>
+        `;
+        promptDiv.style.display = 'flex';
+    }
+}
+
 async function initLIFF() {
-    // 判斷是否為本地環境
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
     if (isLocal) {
-        console.warn('🛠️ [Dev] 偵測到本地環境，啟動 LIFF 模擬模式。');
-        currentUser.userId = 'TEST_LOCAL_USER'; // 測試 ID
+        console.warn('🛠️ [Dev] 本地模式，使用測試帳號');
+        currentUser.userId = 'TEST_LOCAL_USER';
         currentUser.displayName = '測試員 (Local)';
         updateUserUI(true);
+        loadLeadsData(); // 本地直接載入
         return; 
     }
 
     try {
-        if (typeof liff === 'undefined') {
-            console.error('LIFF SDK 未載入');
-            return;
-        }
-        if (!LIFF_ID) {
-            console.log('LIFF ID 未設定');
+        if (typeof liff === 'undefined' || !LIFF_ID) {
+            console.error('LIFF 未就緒');
             return;
         }
         
@@ -50,12 +105,16 @@ async function initLIFF() {
             currentUser.displayName = profile.displayName;
             currentUser.pictureUrl = profile.pictureUrl;
             updateUserUI(true);
+            
+            // 登入成功後，嘗試載入資料 (這時後端會驗證 ID)
+            loadLeadsData();
         } else {
             updateUserUI(false);
+            toggleContentVisibility(false); // 確保內容隱藏
         }
     } catch (error) {
         console.error('LIFF Init Error:', error);
-        updateUserUI(false);
+        toggleContentVisibility(false);
     }
 }
 
@@ -70,8 +129,6 @@ function updateUserUI(isLoggedIn) {
         if (currentUser.pictureUrl) {
             document.getElementById('user-avatar').src = currentUser.pictureUrl;
             document.getElementById('user-avatar').style.display = 'block';
-        } else {
-            document.getElementById('user-avatar').style.display = 'none';
         }
     } else {
         userArea.style.display = 'none';
@@ -80,13 +137,9 @@ function updateUserUI(isLoggedIn) {
 }
 
 function bindEvents() {
-    // 登入
+    // 登入按鈕
     document.getElementById('login-btn').onclick = () => {
-        if (typeof liff !== 'undefined' && LIFF_ID) {
-            liff.login();
-        } else {
-            alert('LIFF 未設定或 SDK 錯誤');
-        }
+        if (typeof liff !== 'undefined' && LIFF_ID) liff.login();
     };
 
     // 視圖切換
@@ -95,28 +148,19 @@ function bindEvents() {
             document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentView = btn.dataset.view;
-            
-            if (currentView === 'mine' && !currentUser.userId) {
-                alert('請先登入 LINE 才能篩選您的名片');
-                document.querySelector('.toggle-btn[data-view="all"]').click();
-                if (typeof liff !== 'undefined' && LIFF_ID) liff.login();
-                return;
-            }
             renderLeads();
         };
     });
 
-    // 搜尋
+    // 搜尋與清除
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('clear-search');
-    
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             clearBtn.style.display = e.target.value ? 'flex' : 'none';
             renderLeads();
         });
     }
-    
     if (clearBtn) {
         clearBtn.onclick = () => {
             searchInput.value = '';
@@ -125,49 +169,60 @@ function bindEvents() {
         };
     }
 
-    // Modal 關閉
+    // Modal 與表單
     document.querySelectorAll('.close-modal').forEach(el => {
         el.onclick = () => {
             document.getElementById('preview-modal').style.display = 'none';
             document.getElementById('edit-modal').style.display = 'none';
         };
     });
+    window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
     
-    window.onclick = (event) => {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    };
-
-    // 編輯表單提交
     const editForm = document.getElementById('edit-form');
-    if (editForm) {
-        editForm.onsubmit = handleEditSubmit;
-    }
+    if (editForm) editForm.onsubmit = handleEditSubmit;
 }
 
 async function loadLeadsData() {
     const loadingEl = document.getElementById('loading-indicator');
     const gridEl = document.getElementById('leads-grid');
     
+    // 如果尚未登入，不執行載入
+    if (!currentUser.userId) return;
+
+    // 先顯示部分 UI 框架，但保持 Loading 狀態
+    toggleContentVisibility(true); 
+    if(loadingEl) loadingEl.style.display = 'block';
+    if(gridEl) gridEl.style.display = 'none';
+    
     try {
-        // 使用公開 API
-        const response = await fetch('/api/line/leads');
+        // 【關鍵】在 Header 加入 x-line-userid
+        const headers = { 
+            'Content-Type': 'application/json',
+            'x-line-userid': currentUser.userId 
+        };
+
+        const response = await fetch('/api/line/leads', { headers });
         const result = await response.json();
         
+        if (response.status === 403) {
+            // 被後端白名單擋下
+            toggleContentVisibility(false); // 隱藏內容
+            showAccessDenied(result.yourUserId); // 顯示拒絕畫面
+            return;
+        }
+
         if (result.success) {
             allLeads = result.data;
             if(loadingEl) loadingEl.style.display = 'none';
             if(gridEl) gridEl.style.display = 'grid';
-            
             updateCounts();
             renderLeads();
         } else {
-            throw new Error('資料載入失敗');
+            throw new Error(result.message || '資料載入失敗');
         }
     } catch (error) {
         console.error(error);
-        if(loadingEl) loadingEl.innerHTML = '<p style="color:red">無法連線到伺服器</p>';
+        if(loadingEl) loadingEl.innerHTML = `<p style="color:red">發生錯誤: ${error.message}</p>`;
     }
 }
 
@@ -188,7 +243,6 @@ function renderLeads() {
 
     let filtered = allLeads.filter(lead => {
         if (currentView === 'mine' && lead.lineUserId !== currentUser.userId) return false;
-        
         if (searchTerm) {
             const text = `${lead.name} ${lead.company} ${lead.position}`.toLowerCase();
             return text.includes(searchTerm);
@@ -238,10 +292,7 @@ function createCardHTML(lead) {
 }
 
 async function openPreview(driveLink) {
-    if (!driveLink) {
-        alert('此名片沒有圖片連結');
-        return;
-    }
+    if (!driveLink) { alert('此名片沒有圖片連結'); return; }
     const modal = document.getElementById('preview-modal');
     const container = document.getElementById('preview-image-container');
     const downloadLink = document.getElementById('preview-download-link');
@@ -250,12 +301,10 @@ async function openPreview(driveLink) {
     container.innerHTML = '<div class="spinner"></div>';
     
     try {
-        // 直接呼叫公開的 API (routes/index.js 已修正)
         const res = await fetch(`/api/drive/thumbnail?link=${encodeURIComponent(driveLink)}`);
         const result = await res.json();
         
         if (result.success && result.thumbnailUrl) {
-            // 嘗試獲取高解析度
             const highResUrl = result.thumbnailUrl.replace(/=s\d+/, '=s1200');
             container.innerHTML = `<img src="${highResUrl}" alt="名片預覽">`;
             downloadLink.href = driveLink;
@@ -263,30 +312,20 @@ async function openPreview(driveLink) {
             throw new Error('無法取得圖片');
         }
     } catch (e) {
-        container.innerHTML = '<p>圖片載入失敗 (可能是權限或連結問題)</p>';
+        container.innerHTML = '<p>圖片載入失敗</p>';
         downloadLink.href = driveLink;
     }
 }
 
 function openEdit(lead) {
-    // 本地測試或已登入都可編輯
-    if (!currentUser.userId) {
-        if(confirm('請先登入 LINE 才能編輯名片。是否登入？')) {
-            if(typeof liff !== 'undefined' && LIFF_ID) liff.login();
-        }
-        return;
-    }
-
     const modal = document.getElementById('edit-modal');
-    
     document.getElementById('edit-rowIndex').value = lead.rowIndex;
     document.getElementById('edit-name').value = lead.name || '';
     document.getElementById('edit-position').value = lead.position || '';
     document.getElementById('edit-company').value = lead.company || '';
     document.getElementById('edit-mobile').value = lead.mobile || '';
     document.getElementById('edit-email').value = lead.email || '';
-    document.getElementById('edit-notes').value = ''; // 清空備註
-    
+    document.getElementById('edit-notes').value = ''; 
     modal.style.display = 'block';
 }
 
@@ -307,20 +346,27 @@ async function handleEditSubmit(e) {
         modifier: currentUser.displayName 
     };
     
-    // 處理備註 (如果有填寫)
     const notes = document.getElementById('edit-notes').value.trim();
-    if (notes) {
-        // 注意：後端 updateRawContact 需要您確認是否有對應的備註欄位邏輯
-        // 這裡先傳送，若後端未實作則會被忽略
-        data.notes = notes;
-    }
+    if (notes) data.notes = notes;
 
     try {
+        // 編輯時同樣帶上 x-line-userid Header
+        const headers = { 
+            'Content-Type': 'application/json',
+            'x-line-userid': currentUser.userId 
+        };
+
         const res = await fetch(`/api/line/leads/${rowIndex}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(data)
         });
+        
+        if (res.status === 403) {
+            alert('您沒有權限執行此操作');
+            return;
+        }
+
         const result = await res.json();
         
         if (result.success) {
