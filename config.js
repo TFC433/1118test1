@@ -4,19 +4,19 @@ module.exports = {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: process.env.PORT || 3001,
     
-    // Google Sheets 設定
-    SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1zHnSV9YxA3_IHlLlvUlIQI4CYz56-HFCA3Jpnk4I8U0',
+    // Google Sheets 設定 (已移除寫死ID)
+    SPREADSHEET_ID: process.env.SPREADSHEET_ID,
     
-    // Google Drive 設定
-    DRIVE_FOLDER_ID: process.env.DRIVE_FOLDER_ID || '1Y_jbl2AmDIcLcuSKhLysKUheXz4SVbuG',
+    // Google Drive 設定 (已移除寫死ID)
+    DRIVE_FOLDER_ID: process.env.DRIVE_FOLDER_ID,
     
     // Google Calendar 設定
     // -----------------------------------------------------------
-    // [AT 日曆] (原系統日曆) - 顯示於右側 (DT欄位)
-    CALENDAR_ID: process.env.CALENDAR_ID || 'c66cf51d93c97155e3f5286a5a454af560a300b256d9ca635a8c6eb52a62c5c7@group.calendar.google.com',
+    // [AT 日曆] (原系統日曆) - 顯示於右側 (DT欄位) (已移除寫死ID)
+    CALENDAR_ID: process.env.CALENDAR_ID,
     
-    // [DX 日曆] (原個人日曆) - 顯示於左側 (IoT欄位)
-    PERSONAL_CALENDAR_ID: process.env.PERSONAL_CALENDAR_ID || '154ed854e330e4e20bc437ddee1f66ee10e5aa9db73c2a4e61902fb0571cbc2f@group.calendar.google.com',
+    // [DX 日曆] (原個人日曆) - 顯示於左側 (IoT欄位) (已移除寫死ID)
+    PERSONAL_CALENDAR_ID: process.env.PERSONAL_CALENDAR_ID,
     // -----------------------------------------------------------
 
     TEAM_CALENDAR_NAME: 'TFC CRM測試日曆',
