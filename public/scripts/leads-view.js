@@ -251,7 +251,7 @@ function renderLeads() {
     grid.innerHTML = filtered.map(lead => createCardHTML(lead)).join('');
 }
 
-// 【重點修改】使用新的 HTML 結構生成卡片
+// 【重點修改】使用新的 HTML 結構生成卡片 (編輯按鈕移除文字並改用次要樣式)
 function createCardHTML(lead) {
     const isMine = (lead.lineUserId === currentUser.userId);
     const ownerName = lead.userNickname || 'Unknown';
@@ -277,10 +277,10 @@ function createCardHTML(lead) {
             </div>
             
             <div class="card-actions">
-                <button class="action-icon-btn" onclick='openPreview("${safe(lead.driveLink)}")' title="預覽名片">
-                    💳
+                <button class="card-btn secondary" onclick='openPreview("${safe(lead.driveLink)}")'>
+                    💳 預覽名片
                 </button>
-                <button class="action-icon-btn" onclick='openEdit(${leadJson})' title="編輯資料">
+                <button class="card-btn secondary" onclick='openEdit(${leadJson})' title="編輯">
                     ✏️
                 </button>
             </div>

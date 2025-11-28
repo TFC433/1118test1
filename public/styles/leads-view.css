@@ -41,7 +41,7 @@ body {
 }
 
 .logo-img {
-    height: 32px;
+    height: 36px; /* 【修改】高度增加約 10% (原32px) */
     width: auto;
 }
 
@@ -183,7 +183,7 @@ body {
     gap: 16px;
 }
 
-/* === 卡片樣式 (全新設計) === */
+/* === 卡片樣式 === */
 .lead-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -259,36 +259,52 @@ body {
     opacity: 0.7;
 }
 
-/* 底部操作區：靠右 Icon 按鈕 */
+/* 底部操作區：靠右排列 */
 .card-actions {
     display: flex;
     justify-content: flex-end; /* 靠右 */
-    gap: 8px;
+    gap: 10px; /* 增加間距 */
     margin-top: auto;
-    padding-top: 8px;
+    padding-top: 12px;
     border-top: 1px solid rgba(0,0,0,0.03); /* 極淡的分隔線 */
 }
 
-/* 純 Icon 按鈕樣式 */
-.action-icon-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-sub);
-    font-size: 1.1rem;
-    cursor: pointer;
+/* === 實體按鈕樣式 === */
+.card-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-.action-icon-btn:hover {
-    background: #f1f5f9;
-    color: var(--primary-color);
+/* 主要按鈕 (藍色) */
+.card-btn.primary {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+.card-btn.primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* 次要按鈕 (預覽/編輯 - 灰色/淡色) */
+.card-btn.secondary {
+    background-color: #f1f5f9; /* 淡灰底 */
+    color: var(--text-sub);
     border-color: #e2e8f0;
+}
+.card-btn.secondary:hover {
+    background-color: #e2e8f0;
+    color: var(--text-main);
 }
 
 /* === "我的名片" 特效 (透明底色 + 光暈) === */
