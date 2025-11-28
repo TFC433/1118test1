@@ -11,6 +11,101 @@
     <link rel="stylesheet" href="styles/modules/variables.css">
     <link rel="stylesheet" href="styles/leads-view.css">
     
+    <style>
+        /* --- 動畫定義 (復刻 CRM 系統特效) --- */
+
+        /* 1. 掃光動畫 (Shine) - 模擬反光掃過表面 */
+        @keyframes btn-shine {
+            0% { left: -100%; opacity: 0; }
+            20% { left: 100%; opacity: 0.5; } /* 光束掃過 */
+            100% { left: 100%; opacity: 0; } /* 停留 */
+        }
+
+        /* 2. 呼吸燈陰影動畫 (Pulse) - 模擬紫色光暈呼吸 */
+        @keyframes btn-pulse-glow {
+            0% { 
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* 初始：微弱陰影 */
+                border-color: #cbd5e1; /* 初始：淡灰邊框 */
+            }
+            50% { 
+                /* 呼吸頂點：明顯的紫色光暈 + 邊框變色 */
+                box-shadow: 0 0 15px rgba(139, 92, 246, 0.6); 
+                border-color: rgba(139, 92, 246, 0.8);
+            }
+            100% { 
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
+                border-color: #cbd5e1;
+            }
+        }
+
+        /* --- Line Bot 按鈕樣式 --- */
+        .line-bot-link {
+            position: relative; /* 為了定位掃光偽元素 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            
+            /* 基礎樣式：白底、深灰字 */
+            background-color: #ffffff;
+            color: #334155; 
+            border: 1px solid #cbd5e1;
+            
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 16px;
+            
+            box-sizing: border-box;
+            overflow: hidden; /* 確保光束不會超出按鈕範圍 */
+            transition: transform 0.1s ease;
+            
+            /* 套用呼吸燈動畫：3秒循環一次 */
+            animation: btn-pulse-glow 3s infinite ease-in-out;
+        }
+
+        /* 掃光層 (::after 偽元素) */
+        .line-bot-link::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            /* 掃光顏色：淡紫色半透明光束 */
+            background: linear-gradient(
+                to right,
+                transparent 0%,
+                rgba(139, 92, 246, 0.2) 50%, 
+                transparent 100%
+            );
+            transform: skewX(-25deg); /* 傾斜光束 */
+            pointer-events: none;
+            /* 套用掃光動畫：4秒循環一次 */
+            animation: btn-shine 4s infinite linear;
+        }
+        
+        /* 點擊時微縮效果 */
+        .line-bot-link:active {
+            transform: scale(0.98);
+            background-color: #f8fafc; /* 點擊時稍微變灰 */
+        }
+
+        .line-bot-link .icon {
+            font-size: 1.2rem;
+            margin-right: 8px;
+            z-index: 1;
+        }
+        
+        /* 避免與現有樣式衝突 */
+        .controls-section {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+
     <script>
         const LIFF_ID = '2008584585-8OQnm0Gk'; 
     </script>
@@ -31,6 +126,12 @@
         </header>
 
         <div class="controls-section">
+            
+            <a href="https://line.me/R/ti/p/@302winpe" target="_blank" class="line-bot-link">
+                <span class="icon">📸</span> 
+                <span>掃描名片</span>
+            </a>
+
             <div class="search-bar">
                 <input type="text" id="search-input" placeholder="🔍 搜尋姓名、公司、職稱...">
                 <button id="clear-search" class="clear-btn" style="display: none;">✕</button>
