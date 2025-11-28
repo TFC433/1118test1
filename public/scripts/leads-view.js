@@ -18,8 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. 綁定事件
     bindEvents();
-    
-    // 注意：不再直接呼叫 loadLeadsData()，改由登入成功後觸發
 });
 
 function toggleContentVisibility(show) {
@@ -124,7 +122,6 @@ function updateUserUI(isLoggedIn) {
         userArea.style.display = 'flex';
         loginBtn.style.display = 'none';
         
-        // 【修改點 1】加入歡迎語 "你好，"
         document.getElementById('user-name').textContent = `你好，${currentUser.displayName}`;
         
         if (currentUser.pictureUrl) {
@@ -146,7 +143,7 @@ function bindEvents() {
         btn.onclick = () => {
             document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            currentView = btn.dataset.view;
+            currentView = btn.dataset.view; // 更新當前視圖狀態
             renderLeads();
         };
     });
@@ -254,7 +251,7 @@ function renderLeads() {
     grid.innerHTML = filtered.map(lead => createCardHTML(lead)).join('');
 }
 
-// 【修改】createCardHTML：修改職稱顯示邏輯
+// 【重點修改】createCardHTML：控制編輯按鈕顯示邏輯
 function createCardHTML(lead) {
     const isMine = (lead.lineUserId === currentUser.userId);
     const ownerName = lead.userNickname || 'Unknown';
@@ -264,9 +261,16 @@ function createCardHTML(lead) {
     const safeHtml = (str) => (str || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const leadJson = JSON.stringify(lead).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
-    // 【修改點 2】檢查職稱是否存在且不為空，如果沒有則不產生該 div
     const positionHtml = (lead.position && lead.position.trim() !== '') 
         ? `<div class="lead-position">${safeHtml(lead.position)}</div>` 
+        : '';
+
+    // 【修改這裡】加入 currentView === 'mine' 的判斷
+    // 條件：必須是自己的名片 (isMine) 且 目前必須在「我的」頁籤 (currentView === 'mine')
+    const showEditBtn = isMine && (currentView === 'mine');
+
+    const editBtnHtml = showEditBtn 
+        ? `<button class="card-btn secondary" onclick='openEdit(${leadJson})' title="編輯">✏️</button>` 
         : '';
 
     return `
@@ -288,9 +292,7 @@ function createCardHTML(lead) {
                 <button class="card-btn secondary" onclick='openPreview("${safe(lead.driveLink)}")'>
                     💳 預覽名片
                 </button>
-                <button class="card-btn secondary" onclick='openEdit(${leadJson})' title="編輯">
-                    ✏️
-                </button>
+                ${editBtnHtml}
             </div>
         </div>
     `;
