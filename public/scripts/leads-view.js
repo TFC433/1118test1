@@ -123,7 +123,10 @@ function updateUserUI(isLoggedIn) {
     if (isLoggedIn) {
         userArea.style.display = 'flex';
         loginBtn.style.display = 'none';
-        document.getElementById('user-name').textContent = currentUser.displayName;
+        
+        // 【修改點 1】加入歡迎語 "你好，"
+        document.getElementById('user-name').textContent = `你好，${currentUser.displayName}`;
+        
         if (currentUser.pictureUrl) {
             document.getElementById('user-avatar').src = currentUser.pictureUrl;
             document.getElementById('user-avatar').style.display = 'block';
@@ -251,7 +254,7 @@ function renderLeads() {
     grid.innerHTML = filtered.map(lead => createCardHTML(lead)).join('');
 }
 
-// 【重點修改】使用新的 HTML 結構生成卡片 (編輯按鈕移除文字並改用次要樣式)
+// 【修改】createCardHTML：修改職稱顯示邏輯
 function createCardHTML(lead) {
     const isMine = (lead.lineUserId === currentUser.userId);
     const ownerName = lead.userNickname || 'Unknown';
@@ -261,6 +264,11 @@ function createCardHTML(lead) {
     const safeHtml = (str) => (str || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const leadJson = JSON.stringify(lead).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
+    // 【修改點 2】檢查職稱是否存在且不為空，如果沒有則不產生該 div
+    const positionHtml = (lead.position && lead.position.trim() !== '') 
+        ? `<div class="lead-position">${safeHtml(lead.position)}</div>` 
+        : '';
+
     return `
         <div class="lead-card ${isMine ? 'is-mine' : ''}">
             <div class="card-top-row">
@@ -269,7 +277,7 @@ function createCardHTML(lead) {
             </div>
             
             <div class="card-info-row">
-                <div class="lead-position">${safeHtml(lead.position) || '職稱未填'}</div>
+                ${positionHtml}
                 <div class="lead-company">
                     <span class="company-icon">🏢</span>
                     ${safeHtml(lead.company)}
