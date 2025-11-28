@@ -7,7 +7,7 @@ let currentUser = {
     displayName: '訪客',
     pictureUrl: null
 };
-let currentView = 'all'; 
+let currentView = 'all'; // 'all' or 'mine'
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. 初始化頁面狀態：先隱藏內容，只顯示 Header
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function toggleContentVisibility(show) {
     const controls = document.querySelector('.controls-section');
     const main = document.querySelector('.leads-container');
-    const loginPrompt = document.getElementById('login-prompt'); // 稍後會在 HTML 加入此元素
+    const loginPrompt = document.getElementById('login-prompt'); 
 
     if (show) {
         if(controls) controls.style.display = 'block';
@@ -34,7 +34,6 @@ function toggleContentVisibility(show) {
     } else {
         if(controls) controls.style.display = 'none';
         if(main) main.style.display = 'none';
-        // 如果沒有 loginPrompt 元素，我們動態建立一個
         if (!loginPrompt) createLoginPrompt();
         else loginPrompt.style.display = 'flex';
     }
@@ -43,7 +42,7 @@ function toggleContentVisibility(show) {
 function createLoginPrompt() {
     const promptDiv = document.createElement('div');
     promptDiv.id = 'login-prompt';
-    promptDiv.className = 'empty-state'; // 重用樣式
+    promptDiv.className = 'empty-state'; 
     promptDiv.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; padding: 20px; text-align: center;';
     
     promptDiv.innerHTML = `
@@ -53,7 +52,6 @@ function createLoginPrompt() {
         <button class="login-btn" onclick="liff.login()" style="padding: 10px 30px; font-size: 1rem;">LINE 登入</button>
     `;
     
-    // 插入到 header 之後
     const header = document.querySelector('.main-header');
     if(header && header.parentNode) {
         header.parentNode.insertBefore(promptDiv, header.nextSibling);
@@ -73,7 +71,7 @@ function showAccessDenied(userId) {
             <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; font-family: monospace; user-select: all; margin-bottom: 20px;">
                 ${userId}
             </div>
-            <button class="action-btn" onclick="liff.logout(); location.reload();">登出並切換帳號</button>
+            <button class="action-btn" onclick="liff.logout(); location.reload();" style="width: auto; padding: 10px 20px;">登出並切換帳號</button>
         `;
         promptDiv.style.display = 'flex';
     }
@@ -106,11 +104,11 @@ async function initLIFF() {
             currentUser.pictureUrl = profile.pictureUrl;
             updateUserUI(true);
             
-            // 登入成功後，嘗試載入資料 (這時後端會驗證 ID)
+            // 登入成功後，嘗試載入資料
             loadLeadsData();
         } else {
             updateUserUI(false);
-            toggleContentVisibility(false); // 確保內容隱藏
+            toggleContentVisibility(false);
         }
     } catch (error) {
         console.error('LIFF Init Error:', error);
@@ -137,12 +135,10 @@ function updateUserUI(isLoggedIn) {
 }
 
 function bindEvents() {
-    // 登入按鈕
     document.getElementById('login-btn').onclick = () => {
         if (typeof liff !== 'undefined' && LIFF_ID) liff.login();
     };
 
-    // 視圖切換
     document.querySelectorAll('.toggle-btn').forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -152,7 +148,6 @@ function bindEvents() {
         };
     });
 
-    // 搜尋與清除
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('clear-search');
     if (searchInput) {
@@ -169,7 +164,6 @@ function bindEvents() {
         };
     }
 
-    // Modal 與表單
     document.querySelectorAll('.close-modal').forEach(el => {
         el.onclick = () => {
             document.getElementById('preview-modal').style.display = 'none';
@@ -186,16 +180,13 @@ async function loadLeadsData() {
     const loadingEl = document.getElementById('loading-indicator');
     const gridEl = document.getElementById('leads-grid');
     
-    // 如果尚未登入，不執行載入
     if (!currentUser.userId) return;
 
-    // 先顯示部分 UI 框架，但保持 Loading 狀態
     toggleContentVisibility(true); 
     if(loadingEl) loadingEl.style.display = 'block';
     if(gridEl) gridEl.style.display = 'none';
     
     try {
-        // 【關鍵】在 Header 加入 x-line-userid
         const headers = { 
             'Content-Type': 'application/json',
             'x-line-userid': currentUser.userId 
@@ -205,9 +196,8 @@ async function loadLeadsData() {
         const result = await response.json();
         
         if (response.status === 403) {
-            // 被後端白名單擋下
-            toggleContentVisibility(false); // 隱藏內容
-            showAccessDenied(result.yourUserId); // 顯示拒絕畫面
+            toggleContentVisibility(false);
+            showAccessDenied(result.yourUserId);
             return;
         }
 
@@ -261,6 +251,7 @@ function renderLeads() {
     grid.innerHTML = filtered.map(lead => createCardHTML(lead)).join('');
 }
 
+// 【重點修改】使用新的 HTML 結構生成卡片
 function createCardHTML(lead) {
     const isMine = (lead.lineUserId === currentUser.userId);
     const ownerName = lead.userNickname || 'Unknown';
@@ -272,20 +263,26 @@ function createCardHTML(lead) {
 
     return `
         <div class="lead-card ${isMine ? 'is-mine' : ''}">
-            <div class="card-header">
-                <span class="owner-badge">${safeHtml(ownerBadge)}</span>
-            </div>
-            <div class="card-body">
+            <div class="card-top-row">
                 <div class="lead-name">${safeHtml(lead.name)}</div>
-                <div class="lead-position">${safeHtml(lead.position) || '無職稱'}</div>
+                <div class="owner-badge">${safeHtml(ownerBadge)}</div>
+            </div>
+            
+            <div class="card-info-row">
+                <div class="lead-position">${safeHtml(lead.position) || '職稱未填'}</div>
                 <div class="lead-company">
                     <span class="company-icon">🏢</span>
                     ${safeHtml(lead.company)}
                 </div>
             </div>
+            
             <div class="card-actions">
-                <button class="action-btn" onclick='openPreview("${safe(lead.driveLink)}")'>👁️ 預覽</button>
-                <button class="action-btn" onclick='openEdit(${leadJson})'>✏️ 編輯</button>
+                <button class="action-icon-btn" onclick='openPreview("${safe(lead.driveLink)}")' title="預覽名片">
+                    💳
+                </button>
+                <button class="action-icon-btn" onclick='openEdit(${leadJson})' title="編輯資料">
+                    ✏️
+                </button>
             </div>
         </div>
     `;
@@ -350,7 +347,6 @@ async function handleEditSubmit(e) {
     if (notes) data.notes = notes;
 
     try {
-        // 編輯時同樣帶上 x-line-userid Header
         const headers = { 
             'Content-Type': 'application/json',
             'x-line-userid': currentUser.userId 

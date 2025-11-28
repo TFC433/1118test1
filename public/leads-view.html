@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>潛在客戶看板 | FATDX</title>
+    <title>FANUCforce 潛在客戶名片總覽</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -12,17 +12,16 @@
     <link rel="stylesheet" href="styles/leads-view.css">
     
     <script>
-        // ✅ 您的 LIFF ID 已填入
         const LIFF_ID = '2008584585-8OQnm0Gk'; 
     </script>
 </head>
 <body>
     <div class="app-container">
         <header class="main-header">
-            <div class="logo-area">
+            <a href="/dashboard.html" class="logo-area" style="text-decoration: none;">
                 <img src="images/logo-full.svg" alt="FATDX" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
                 <span class="logo-text" style="display:none; font-weight:800; font-size:1.2rem; color:var(--text-primary);">FATDX CRM</span>
-            </div>
+            </a>
             
             <div class="user-area" id="user-area" style="display: none;">
                 <span class="user-name" id="user-name">載入中...</span>
