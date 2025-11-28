@@ -251,7 +251,7 @@ function renderLeads() {
     grid.innerHTML = filtered.map(lead => createCardHTML(lead)).join('');
 }
 
-// 【修改】生成支援電腦/手機雙模的 HTML 結構
+// 【重點修改】使用新的 HTML 結構生成卡片 (編輯按鈕移除文字並改用次要樣式)
 function createCardHTML(lead) {
     const isMine = (lead.lineUserId === currentUser.userId);
     const ownerName = lead.userNickname || 'Unknown';
@@ -261,42 +261,29 @@ function createCardHTML(lead) {
     const safeHtml = (str) => (str || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const leadJson = JSON.stringify(lead).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
-    // 這裡我們生成兩組按鈕，透過 CSS 的 .mobile-only 和 .card-actions-desktop 來控制顯示
     return `
         <div class="lead-card ${isMine ? 'is-mine' : ''}">
-            
-            <div class="card-row-top">
-                <div class="info-group">
-                    <div class="lead-name">${safeHtml(lead.name)}</div>
-                    <div class="lead-position">${safeHtml(lead.position) || '職稱未填'}</div>
-                </div>
-                <div class="meta-group">
-                    <div class="owner-badge">${safeHtml(ownerBadge)}</div>
-                    <button class="btn-mobile-edit mobile-only" onclick='openEdit(${leadJson})' title="編輯">
-                        ✏️
-                    </button>
-                </div>
+            <div class="card-top-row">
+                <div class="lead-name">${safeHtml(lead.name)}</div>
+                <div class="owner-badge">${safeHtml(ownerBadge)}</div>
             </div>
             
-            <div class="card-row-bottom">
+            <div class="card-info-row">
+                <div class="lead-position">${safeHtml(lead.position) || '職稱未填'}</div>
                 <div class="lead-company">
                     <span class="company-icon">🏢</span>
                     ${safeHtml(lead.company)}
                 </div>
-                <button class="btn-mobile-preview mobile-only" onclick='openPreview("${safe(lead.driveLink)}")'>
-                    💳 預覽
-                </button>
             </div>
             
-            <div class="card-actions-desktop">
+            <div class="card-actions">
                 <button class="card-btn secondary" onclick='openPreview("${safe(lead.driveLink)}")'>
                     💳 預覽名片
                 </button>
-                <button class="card-btn primary" onclick='openEdit(${leadJson})'>
-                    ✏️ 編輯
+                <button class="card-btn secondary" onclick='openEdit(${leadJson})' title="編輯">
+                    ✏️
                 </button>
             </div>
-
         </div>
     `;
 }
